@@ -3,10 +3,9 @@ import { Frame as FrameDefinition, NavigationEntry, BackstackEntry, NavigationTr
 import { Page } from "../page";
 
 // Types.
-import { View, CustomLayoutView, isIOS, isAndroid, traceEnabled, traceWrite, traceCategories, EventData, Property, CSSType } from "../core/view";
-import { resolveFileName } from "../../file-system/file-name-resolver";
-import { knownFolders, path } from "../../file-system";
-import { parse, createViewFromEntry } from "../builder";
+import { getAncestor } from "../core/view/view-common";
+import { View, CustomLayoutView, isIOS, isAndroid, traceEnabled, traceWrite, traceCategories, Property, CSSType } from "../core/view";
+import { createViewFromEntry } from "../builder";
 import { profile } from "../../profiling";
 
 import { frameStack, topmost as frameStackTopmost, _pushInFrameStack, _popFromFrameStack, _removeFromFrameStack } from "./frame-stack";
@@ -43,6 +42,7 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
     private _backStack = new Array<BackstackEntry>();
     private _navigationQueue = new Array<NavigationContext>();
 
+    public actionBarVisibility: "auto" | "never" | "always";
     public _currentEntry: BackstackEntry;
     public _executingEntry: BackstackEntry;
     public _isInFrameStack = false;
@@ -217,6 +217,10 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
 
         this._currentEntry = entry;
 
+        if (isBack) {
+            this._pushInFrameStack();
+        }
+
         newPage.onNavigatedTo(isBack);
 
         // Reset executing entry after NavigatedTo is raised;
@@ -245,6 +249,18 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
         if (current && this._backStack.indexOf(current) < 0) {
             this._removeEntry(current);
         }
+    }
+
+    private isNestedWithin(parentFrameCandidate: FrameBase): boolean {
+        let frameAncestor: FrameBase = this;
+        while (frameAncestor) {
+            frameAncestor = <FrameBase>getAncestor(frameAncestor, FrameBase);
+            if (frameAncestor === parentFrameCandidate) {
+                return true;
+            }
+        }
+    
+        return false;
     }
 
     private raiseCurrentPageNavigatedEvents(isBack: boolean) {
@@ -406,6 +422,23 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
         return null;
     }
 
+    public _pushInFrameStackRecursive() {
+        this._pushInFrameStack();
+
+        // make sure nested frames order is kept intact i.e. the nested one should always be on top;
+        // see https://github.com/NativeScript/nativescript-angular/issues/1596 for more information
+        const framesToPush = [];
+        for (const frame of frameStack) {
+            if (frame.isNestedWithin(this)) {
+                framesToPush.push(frame);
+            }
+        }
+
+        for (const frame of framesToPush) {
+            frame._pushInFrameStack();
+        }
+    }
+
     public _pushInFrameStack() {
         _pushInFrameStack(this);
     }
@@ -424,8 +457,8 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
     }
 
     public _onRootViewReset(): void {
-        this._removeFromFrameStack();
         super._onRootViewReset();
+        this._removeFromFrameStack();
     }
 
     get _childrenCount(): number {
@@ -533,6 +566,10 @@ export class FrameBase extends CustomLayoutView implements FrameDefinition {
     public _onLivesync(): boolean {
         super._onLivesync();
 
+        if (!this._currentEntry || !this._currentEntry.entry) {
+            return false;
+        }
+
         const currentEntry = this._currentEntry.entry;
         const newEntry: NavigationEntry = {
             animated: false,
@@ -571,6 +608,22 @@ export function goBack(): boolean {
     if (top && top.canGoBack()) {
         top.goBack();
         return true;
+    } else if (top) {
+        let parentFrameCanGoBack = false;
+        let parentFrame = <FrameBase>getAncestor(top, "Frame");
+
+        while (parentFrame && !parentFrameCanGoBack) {
+            if (parentFrame && parentFrame.canGoBack()) {
+                parentFrameCanGoBack = true;
+            } else {
+                parentFrame = <FrameBase>getAncestor(parentFrame, "Frame");
+            }
+        }
+
+        if (parentFrame && parentFrameCanGoBack) {
+            parentFrame.goBack();
+            return true;
+        }
     }
 
     if (frameStack.length > 1) {
@@ -589,5 +642,7 @@ export const defaultPage = new Property<FrameBase, string>({
         frame.navigate({ moduleName: newValue });
     }
 });
-
 defaultPage.register(FrameBase)
+
+export const actionBarVisibilityProperty = new Property<FrameBase, "auto" | "never" | "always">({ name: "actionBarVisibility", defaultValue: "auto", affectsLayout: isIOS });
+actionBarVisibilityProperty.register(FrameBase);

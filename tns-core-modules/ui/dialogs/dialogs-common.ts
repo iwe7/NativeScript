@@ -2,7 +2,10 @@
 import { View } from "../core/view";
 import { Color } from "../../color";
 import { Page } from "../page";
+import { isIOS } from "../../platform";
 import * as frameModule from "../frame";
+import { LoginOptions } from "./dialogs";
+import { isObject, isString } from "../../utils/types";
 
 export const STRING = "string";
 export const PROMPT = "Prompt";
@@ -30,6 +33,41 @@ export module inputType {
      * Email input type.
      */
     export const email: string = "email";
+
+    /**
+     * Number input type
+     */
+    export const number: string = "number";
+
+    /**
+     * Phone input type
+     */
+    export const phone: string = "phone";
+}
+
+/**
+ * Defines the capitalization type for prompt dialog.
+ */
+export module capitalizationType {
+    /**
+     * No automatic capitalization.
+     */
+    export const none: string = "none";
+
+    /**
+     * Capitalizes every character.
+     */
+    export const all: string = "all";
+
+    /**
+     * Capitalize the first word of each sentence.
+     */
+    export const sentences: string = "sentences";
+
+    /**
+     * Capitalize the first letter of every word.
+     */
+    export const words: string = "words";
 }
 
 let frame: typeof frameModule;
@@ -67,6 +105,9 @@ export function getButtonColors(): { color: Color, backgroundColor: Color } {
     if (!button) {
         const Button = require("ui/button").Button;
         button = new Button;
+        if (isIOS) {
+            button._setupUI({});
+        }
     }
 
     let buttonColor: Color;
@@ -82,6 +123,9 @@ export function getLabelColor(): Color {
     if (!label) {
         const Label = require("ui/label").Label;
         label = new Label;
+        if (isIOS) {
+            label._setupUI({});
+        }
     }
 
     let labelColor: Color;
@@ -95,6 +139,9 @@ export function getTextFieldColor(): Color {
     if (!textField) {
         const TextField = require("ui/text-field").TextField;
         textField = new TextField();
+        if (isIOS) {
+            textField._setupUI({});
+        }
     }
 
     let textFieldColor: Color;
@@ -106,4 +153,35 @@ export function getTextFieldColor(): Color {
 
 export function isDialogOptions(arg): boolean {
     return arg && (arg.message || arg.title);
+}
+
+export function parseLoginOptions(args: any[]): LoginOptions {
+    // Handle options object first
+    if (args.length === 1 && isObject(args[0])) {
+        return args[0];
+    }
+
+    let options: LoginOptions = { title: LOGIN, okButtonText: OK, cancelButtonText: CANCEL };
+
+    if (isString(args[0])) {
+        options.message = args[0];
+    }
+
+    if (isString(args[1])) {
+        options.userNameHint = args[1];
+    }
+
+    if (isString(args[2])) {
+        options.passwordHint = args[2];
+    }
+
+    if (isString(args[3])) {
+        options.userName = args[3];
+    }
+
+    if (isString(args[4])) {
+        options.password = args[4];
+    }
+
+    return options;
 }

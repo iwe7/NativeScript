@@ -137,9 +137,7 @@ export class FileSystemEntity {
         var path = parentFolder.path;
         var newPath = fileAccess.joinPath(path, newName);
 
-        var hasError = false;
         var localError = function (error) {
-            hasError = true;
             if (onError) {
                 onError(error);
             }
@@ -198,6 +196,10 @@ export class File extends FileSystemEntity {
     get isLocked(): boolean {
         // !! is a boolean conversion/cast, handling undefined as well
         return !!this._locked;
+    }
+
+    get size(): number {
+        return getFileAccess().getFileSize(this.path);
     }
 
     public readSync(onError?: (error: any) => any): any {
@@ -304,7 +306,7 @@ export class File extends FileSystemEntity {
                     onError(error);
                 }
             };
-    
+
             // TODO: Asyncronous
             getFileAccess().writeText(this.path, content, localError, encoding);
         } finally {
@@ -499,15 +501,15 @@ export module knownFolders {
 
         return _app;
     };
-    
+
     export module ios {
-        function _checkPlatform(knownFolderName: string){
+        function _checkPlatform(knownFolderName: string) {
             ensurePlatform();
-            if (!platform.isIOS){
+            if (!platform.isIOS) {
                 throw new Error(`The "${knownFolderName}" known folder is available on iOS only!`);
-            }            
+            }
         }
-        
+
         let _library: Folder;
         export var library = function(): Folder {
             _checkPlatform("library");
@@ -523,7 +525,7 @@ export module knownFolders {
 
             return _library;
         };
-        
+
         let _developer: Folder;
         export var developer = function(): Folder {
             _checkPlatform("developer");
@@ -539,7 +541,7 @@ export module knownFolders {
 
             return _developer;
         };
-        
+
         let _desktop: Folder;
         export var desktop = function(): Folder {
             _checkPlatform("desktop");
@@ -555,7 +557,7 @@ export module knownFolders {
 
             return _desktop;
         };
-        
+
         let _downloads: Folder;
         export var downloads = function(): Folder {
             _checkPlatform("downloads");
@@ -571,7 +573,7 @@ export module knownFolders {
 
             return _downloads;
         };
-        
+
         let _movies: Folder;
         export var movies = function(): Folder {
             _checkPlatform("movies");
@@ -587,7 +589,7 @@ export module knownFolders {
 
             return _movies;
         };
-        
+
         let _music: Folder;
         export var music = function(): Folder {
             _checkPlatform("music");

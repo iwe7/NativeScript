@@ -1,12 +1,26 @@
 import { IOSActionItemSettings, ActionItem as ActionItemDefinition } from ".";
-import { ActionItemBase, ActionBarBase, isVisible, View, colorProperty, backgroundColorProperty, backgroundInternalProperty, flatProperty, layout, Color } from "./action-bar-common";
-import { ImageSource, fromFileOrResource } from "../../image-source";
+import { 
+    ActionItemBase, ActionBarBase, isVisible, View, 
+    colorProperty, backgroundColorProperty, 
+    backgroundInternalProperty, flatProperty, 
+    layout, Color, traceMissingIcon } from "./action-bar-common";
+import { fromFileOrResource } from "../../image-source";
 import { ios as iosUtils } from "../../utils/utils";
 
 export * from "./action-bar-common";
 
 const majorVersion = iosUtils.MajorVersion;
 const UNSPECIFIED = layout.makeMeasureSpec(0, layout.UNSPECIFIED);
+
+function loadActionIconFromFileOrResource(icon: string): UIImage {
+    const img = fromFileOrResource(icon);
+    if (img && img.ios) {
+        return img.ios;
+    } else {
+        traceMissingIcon(icon);
+        return null;
+    }
+}
 
 class TapBarItemHandlerImpl extends NSObject {
     private _owner: WeakRef<ActionItemDefinition>;
@@ -116,7 +130,12 @@ export class ActionBar extends ActionBarBase {
         const viewController = (<UIViewController>page.ios);
         const navigationItem: UINavigationItem = viewController.navigationItem;
         const navController = <UINavigationController>viewController.navigationController;
-        const navigationBar = navController ? navController.navigationBar : null;
+
+        if (!navController) {
+            return;
+        }
+
+        const navigationBar = navController.navigationBar;
         let previousController: UIViewController;
 
         // Set Title
@@ -146,16 +165,16 @@ export class ActionBar extends ActionBarBase {
         }
 
         // Set back button image
-        let img: ImageSource;
+        let img: UIImage;
         if (this.navigationButton && isVisible(this.navigationButton) && this.navigationButton.icon) {
-            img = fromFileOrResource(this.navigationButton.icon);
+            img = loadActionIconFromFileOrResource(this.navigationButton.icon);
         }
 
         // TODO: This could cause issue when canceling BackEdge gesture - we will change the backIndicator to
         // show the one from the old page but the new page will still be visible (because we canceled EdgeBackSwipe gesutre)
         // Consider moving this to new method and call it from - navigationControllerDidShowViewControllerAnimated.
-        if (img && img.ios) {
-            let image = img.ios.imageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
+        if (img) {
+            let image = img.imageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
             navigationBar.backIndicatorImage = image;
             navigationBar.backIndicatorTransitionMaskImage = image;
         } else {
@@ -221,12 +240,8 @@ export class ActionBar extends ActionBarBase {
 
             barButtonItem = UIBarButtonItem.alloc().initWithBarButtonSystemItemTargetAction(id, tapHandler, "tap");
         } else if (item.icon) {
-            const img = fromFileOrResource(item.icon);
-            if (img && img.ios) {
-                barButtonItem = UIBarButtonItem.alloc().initWithImageStyleTargetAction(img.ios, UIBarButtonItemStyle.Plain, tapHandler, "tap");
-            } else {
-                throw new Error("Error loading icon from " + item.icon);
-            }
+            const img = loadActionIconFromFileOrResource(item.icon);
+            barButtonItem = UIBarButtonItem.alloc().initWithImageStyleTargetAction(img, UIBarButtonItemStyle.Plain, tapHandler, "tap");
         } else {
             barButtonItem = UIBarButtonItem.alloc().initWithTitleStyleTargetAction(item.text + "", UIBarButtonItemStyle.Plain, tapHandler, "tap");
         }
@@ -242,16 +257,22 @@ export class ActionBar extends ActionBarBase {
 
     private updateColors(navBar: UINavigationBar) {
         const color = this.color;
-        if (color) {
-            navBar.titleTextAttributes = <any>{ [NSForegroundColorAttributeName]: color.ios };
-            navBar.tintColor = color.ios;
-        } else {
-            navBar.titleTextAttributes = null;
-            navBar.tintColor = null;
-        }
+        this.setColor(navBar, color);
 
         const bgColor = <Color>this.backgroundColor;
         navBar.barTintColor = bgColor ? bgColor.ios : null;
+    }
+
+    private setColor(navBar: UINavigationBar, color?: Color) {
+        if (color) {
+            navBar.titleTextAttributes = <any>{ [NSForegroundColorAttributeName]: color.ios };
+            navBar.largeTitleTextAttributes = <any>{ [NSForegroundColorAttributeName]: color.ios };
+            navBar.tintColor = color.ios;
+        } else {
+            navBar.titleTextAttributes = null;
+            navBar.largeTitleTextAttributes = null;
+            navBar.tintColor = null;
+        }
     }
 
     public _onTitlePropertyChanged() {
@@ -282,9 +303,7 @@ export class ActionBar extends ActionBarBase {
 
     public onMeasure(widthMeasureSpec: number, heightMeasureSpec: number) {
         const width = layout.getMeasureSpecSize(widthMeasureSpec);
-        const widthMode = layout.getMeasureSpecMode(widthMeasureSpec);
         const height = layout.getMeasureSpecSize(heightMeasureSpec);
-        const heightMode = layout.getMeasureSpecMode(heightMeasureSpec);
 
         if (this.titleView) {
             View.measureChild(this, this.titleView, UNSPECIFIED, UNSPECIFIED);
@@ -345,13 +364,7 @@ export class ActionBar extends ActionBarBase {
     }
     [colorProperty.setNative](color: Color) {
         const navBar = this.navBar;
-        if (color) {
-            navBar.tintColor = color.ios;
-            navBar.titleTextAttributes = <any>{ [NSForegroundColorAttributeName]: color.ios };
-        } else {
-            navBar.tintColor = null;
-            navBar.titleTextAttributes = null;
-        }
+        this.setColor(navBar, color);
     }
 
     [backgroundColorProperty.getDefault](): UIColor {

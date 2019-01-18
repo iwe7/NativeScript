@@ -2,7 +2,7 @@ import { EventData } from "tns-core-modules/data/observable";
 import { ObservableArray } from "tns-core-modules/data/observable-array";
 import { View, KeyedTemplate } from "tns-core-modules/ui/core/view";
 import { Page } from "tns-core-modules/ui/page";
-import { ViewModel, Item } from './main-view-model';
+import { ViewModel, Item } from "./main-view-model";
 import { ListView } from "tns-core-modules/ui/list-view";
 import { Label } from "tns-core-modules/ui/label";
 import { GridLayout } from "tns-core-modules/ui/layouts/grid-layout";
@@ -35,26 +35,53 @@ export function pageLoaded(args: EventData) {
   lv4.itemTemplates = new Array<KeyedTemplate>(
       {
           key: "red",
-          createView: () => { return createLabel(new Color("red")); }
+          createView: () => createLabel(new Color("red"))
       },
       {
           key: "green",
-          createView: () => { return createLabel(new Color("green")); }
+          createView: () => createLabel(new Color("green"))
       },
       {
           key: "yellow",
-          createView: () => { return createLabel(new Color("yellow")); }
+          createView: () => createLabel(new Color("yellow"))
       }
   );
 }
 
 let scrollToBottom = true;
-export function onScroll(args: EventData){
+export function onScroll(args: EventData) {
   let page = (<View>args.object).page;
   let gridLayout = page.getViewById<GridLayout>("grid-layout");
-  for (let i = 0, length = gridLayout.getChildrenCount(); i < length; i++){
+  for (let i = 0, length = gridLayout.getChildrenCount(); i < length; i++) {
       let listView = <ListView>gridLayout.getChildAt(i);
       listView.scrollToIndex(scrollToBottom ? listView.items.length - 1 : 0);
   }
   scrollToBottom = !scrollToBottom;
+}
+
+export function onScrollToIndex(args: EventData) {
+    let page = (<View>args.object).page;
+    let gridLayout = page.getViewById<GridLayout>("grid-layout");
+    for (let i = 0, length = gridLayout.getChildrenCount(); i < length; i++) {
+        let listView = <ListView>gridLayout.getChildAt(i);
+        listView.scrollToIndex(50);
+    }
+}
+
+export function onScrollToIndexAnimated(args: EventData) {
+    let page = (<View>args.object).page;
+    let gridLayout = page.getViewById<GridLayout>("grid-layout");
+    for (let i = 0, length = gridLayout.getChildrenCount(); i < length; i++) {
+        let listView = <ListView>gridLayout.getChildAt(i);
+        listView.scrollToIndexAnimated(50);
+    }
+}
+
+export function onScrollReset(args: EventData) {
+    let page = (<View>args.object).page;
+    let gridLayout = page.getViewById<GridLayout>("grid-layout");
+    for (let i = 0, length = gridLayout.getChildrenCount(); i < length; i++) {
+        let listView = <ListView>gridLayout.getChildAt(i);
+        listView.scrollToIndex(0);
+    }
 }

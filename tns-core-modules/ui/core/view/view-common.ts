@@ -6,7 +6,9 @@ import {
 
 import {
     ViewBase, Property, booleanConverter, EventData, layout,
-    getEventOrGestureName, traceEnabled, traceWrite, traceCategories
+    getEventOrGestureName, traceEnabled, traceWrite, traceCategories,
+    InheritedProperty,
+    ShowModalOptions
 } from "../view-base";
 
 import { HorizontalAlignment, VerticalAlignment, Visibility, Length, PercentLength } from "../../styling/style-properties";
@@ -21,9 +23,11 @@ import {
 
 import { createViewFromEntry } from "../../builder";
 import { StyleScope } from "../../styling/style-scope";
+import { LinearGradient } from "../../styling/linear-gradient";
 
 export * from "../../styling/style-properties";
 export * from "../view-base";
+export { LinearGradient };
 
 import * as am from "../../animation";
 let animationModule: typeof am;
@@ -59,6 +63,7 @@ export function PseudoClassHandler(...pseudoClasses: string[]): MethodDecorator 
 export const _rootModalViews = new Array<ViewBase>();
 
 export abstract class ViewCommon extends ViewBase implements ViewDefinition {
+    public static layoutChangedEvent = "layoutChanged";
     public static shownModallyEvent = "shownModally";
     public static showingModallyEvent = "showingModally";
 
@@ -71,7 +76,7 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
     private _measuredWidth: number;
     private _measuredHeight: number;
 
-    private _isLayoutValid: boolean;
+    protected _isLayoutValid: boolean;
     private _cssType: string;
 
     private _localAnimations: Set<am.Animation>;
@@ -211,33 +216,49 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
         return undefined;
     }
 
-    public showModal(): ViewDefinition {
-        if (arguments.length === 0) {
-            throw new Error('showModal without parameters is deprecated. Please call showModal on a view instance instead.');
+    private getModalOptions(args: IArguments): { view: ViewCommon, options: ShowModalOptions } {
+        if (args.length === 0) {
+            throw new Error("showModal without parameters is deprecated. Please call showModal on a view instance instead.");
         } else {
-            const firstAgrument = arguments[0];
-            const context: any = arguments[1];
-            const closeCallback: Function = arguments[2];
-            const fullscreen: boolean = arguments[3];
-            const animated = arguments[4];
-            const stretched = arguments[5];
+            let options: ShowModalOptions = null;
 
-            const view: ViewDefinition = firstAgrument instanceof ViewCommon
-                ? firstAgrument : createViewFromEntry({ moduleName: firstAgrument });
+            if (args.length === 2) {
+                options = <ShowModalOptions>args[1];
+            } else {
+                // TODO: Add deprecation warning
+                options = {
+                    context: args[1],
+                    closeCallback: args[2],
+                    fullscreen: args[3],
+                    animated: args[4],
+                    stretched: args[5]
+                };
+            }
 
-            (<ViewCommon>view)._showNativeModalView(this, context, closeCallback, fullscreen, animated, stretched);
-            return view;
+            const firstArgument = args[0];
+            const view = firstArgument instanceof ViewCommon
+                ? firstArgument : <ViewCommon>createViewFromEntry({ moduleName: firstArgument });
+
+            return { view, options };
         }
     }
 
-    public closeModal() {
+    public showModal(): ViewDefinition {
+        const { view, options } = this.getModalOptions(arguments);
+
+        view._showNativeModalView(this, options);
+
+        return view;
+    }
+
+    public closeModal(...args) {
         let closeCallback = this._closeModalCallback;
         if (closeCallback) {
             closeCallback.apply(undefined, arguments);
         } else {
             let parent = this.parent;
             if (parent) {
-                parent.closeModal();
+                parent.closeModal(...args);
             }
         }
     }
@@ -246,33 +267,42 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
         return this._modal;
     }
 
-    protected _showNativeModalView(parent: ViewCommon, context: any, closeCallback: Function, fullscreen?: boolean, animated?: boolean, stretched?: boolean) {
+    protected _showNativeModalView(parent: ViewCommon, options: ShowModalOptions) { //context: any, closeCallback: Function, fullscreen?: boolean, animated?: boolean, stretched?: boolean, iosOpts?: any) {
         _rootModalViews.push(this);
 
         parent._modal = this;
         this._modalParent = parent;
-        this._modalContext = context;
+        this._modalContext = options.context;
         const that = this;
-        this._closeModalCallback = function () {
+        this._closeModalCallback = function (...originalArgs) {
             if (that._closeModalCallback) {
                 const modalIndex = _rootModalViews.indexOf(that);
                 _rootModalViews.splice(modalIndex);
-                that._hideNativeModalView(parent);
                 that._modalParent = null;
                 that._modalContext = null;
                 that._closeModalCallback = null;
                 that._dialogClosed();
                 parent._modal = null;
 
-                if (typeof closeCallback === "function") {
-                    closeCallback.apply(undefined, arguments);
+                const whenClosedCallback = () => {
+                    if (typeof options.closeCallback === "function") {
+                        options.closeCallback.apply(undefined, originalArgs);
+                    }
                 }
+
+                that._hideNativeModalView(parent, whenClosedCallback);
             }
         };
     }
 
-    protected _hideNativeModalView(parent: ViewCommon) {
-        //
+    protected abstract _hideNativeModalView(parent: ViewCommon, whenClosedCallback: () => void);
+
+    protected _raiseLayoutChangedEvent() {
+        const args: EventData = {
+            eventName: ViewCommon.layoutChangedEvent,
+            object: this
+        };
+        this.notify(args);
     }
 
     protected _raiseShownModallyEvent() {
@@ -435,10 +465,10 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
         this.style.backgroundColor = value;
     }
 
-    get backgroundImage(): string {
+    get backgroundImage(): string | LinearGradient {
         return this.style.backgroundImage;
     }
-    set backgroundImage(value: string) {
+    set backgroundImage(value: string | LinearGradient) {
         this.style.backgroundImage = value;
     }
 
@@ -575,6 +605,8 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
     public originY: number;
     public isEnabled: boolean;
     public isUserInteractionEnabled: boolean;
+    public iosOverflowSafeArea: boolean;
+    public iosOverflowSafeAreaEnabled: boolean;
 
     get isLayoutValid(): boolean {
         return this._isLayoutValid;
@@ -831,7 +863,7 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
     }
 
     _getCurrentLayoutBounds(): { left: number; top: number; right: number; bottom: number } {
-        return { left: this._oldLeft, top: this._oldTop, right: this._oldRight, bottom: this._oldBottom };
+        return { left: 0, top: 0, right: 0, bottom: 0 };
     }
 
     /**
@@ -866,6 +898,10 @@ export abstract class ViewCommon extends ViewBase implements ViewDefinition {
 
     public focus(): boolean {
         return undefined;
+    }
+
+    public getSafeAreaInsets(): { left, top, right, bottom } {
+        return { left: 0, top: 0, right: 0, bottom: 0 };
     }
 
     public getLocationInWindow(): Point {
@@ -1011,3 +1047,9 @@ isEnabledProperty.register(ViewCommon);
 
 export const isUserInteractionEnabledProperty = new Property<ViewCommon, boolean>({ name: "isUserInteractionEnabled", defaultValue: true, valueConverter: booleanConverter });
 isUserInteractionEnabledProperty.register(ViewCommon);
+
+export const iosOverflowSafeAreaProperty = new Property<ViewCommon, boolean>({ name: "iosOverflowSafeArea", defaultValue: false, valueConverter: booleanConverter });
+iosOverflowSafeAreaProperty.register(ViewCommon);
+
+export const iosOverflowSafeAreaEnabledProperty = new InheritedProperty<ViewCommon, boolean>({ name: "iosOverflowSafeAreaEnabled", defaultValue: true, valueConverter: booleanConverter });
+iosOverflowSafeAreaEnabledProperty.register(ViewCommon);

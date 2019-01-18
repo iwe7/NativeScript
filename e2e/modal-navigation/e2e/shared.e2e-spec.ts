@@ -3,9 +3,24 @@ import { Screen } from "./screen"
 
 const time = 1;
 
+export const roots = ["setFrameRootView", "setLayoutRootView", "setTabRootView"];
+
 export async function modalFrameBackground(driver: AppiumDriver, screen: Screen) {
     await driver.backgroundApp(time);
     await screen.loadedModalFrame();
+}
+
+export async function testDialogBackground(driver: AppiumDriver, screen: Screen, isInFrame: boolean = true) {
+    await screen.showDialogConfirm();
+    await screen.loadedConfirmDialog();
+
+    await driver.backgroundApp(time);
+    await screen.loadedConfirmDialog();
+
+    await screen.closeDialog();
+    if (isInFrame) {
+        await screen.loadedModalFrame();
+    }
 }
 
 export async function testSecondPageBackground(driver: AppiumDriver, screen: Screen) {
@@ -17,6 +32,14 @@ export async function testSecondPageBackground(driver: AppiumDriver, screen: Scr
 
     await screen.goBackFromSecondPage();
     await screen.loadedModalFrame();
+}
+
+export async function testSecondPageClose(driver: AppiumDriver, screen: Screen) {
+    await screen.navigateToSecondPage();
+    await screen.loadedSecondPage();
+
+    await screen.closeModal();
+    await screen.loadedHome();
 }
 
 export async function testNestedModalFrameBackground(driver: AppiumDriver, screen: Screen, isInFrame: boolean = true) {

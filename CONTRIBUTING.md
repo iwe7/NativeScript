@@ -8,6 +8,7 @@ Here are some guides on how to do that:
  - [Requesting New Features](#features)
  - [Submitting a PR](#pr)
  - [Commit Message Guidelines](#commit-messages)
+ - [Releasing new versions](#release)
 
 ##  <a name="coc"></a> Code of Conduct
 Help us keep a healthy and open community. We expect all participants in this project to adhere to the [NativeScript Code Of Conduct](https://github.com/NativeScript/codeofconduct).
@@ -18,6 +19,10 @@ Help us keep a healthy and open community. We expect all participants in this pr
 1. Always update to the most recent master release; the bug may already be resolved.
 2. Search for similar issues in the issues list for this repo; it may already be an identified problem.
 3. If this is a bug or problem that is clear, simple, and is unlikely to require any discussion -- it is OK to open an issue on GitHub with a reproduction of the bug including workflows and screenshots. If possible, submit a Pull Request with a failing test, entire application or module. If you'd rather take matters into your own hands, fix the bug yourself (jump down to the [Submitting a PR](#pr) section).
+
+> While we are doing all we can to take care of every issue, sometimes we get overwhelmed. That's why
+> - issues that are not constructive or describe problems that cannot be reproduced will be closed
+> - feature requests or bug reports with unanswered questions regarding the behavior/reproduction for more than 20 days will be closed 
 
 ## <a name="features"></a> Requesting Features
 
@@ -57,11 +62,12 @@ git checkout -b <my-fix-branch> master
 
 4. The fun part! Make your code changes. Make sure you:
     - Follow the [code conventions guide](CodingConvention.md).
+    - Follow the [guide on handling errors and exceptions](HandlingErrors.md).
     - Write unit tests for your fix or feature. Check out [writing unit tests guide](WritingUnitTests.md).
 
 5. Before you submit your PR:
     - Rebase your changes to the latest master: `git pull --rebase upstream master`.
-    - Ensure all unit test are green for Android and iOS. Check [running unit tests](DevelopmentWorkflow.md#running-unit-tests).
+    - Ensure all unit test are green for Android and iOS. Check [running unit   tests](DevelopmentWorkflow.md#running-unit-tests).
     - Ensure your changes pass tslint validation. (run `npm run tslint` in the root of the repo).
 
 6. Push your fork. If you have rebased you might have to use force-push your branch:
@@ -73,6 +79,7 @@ git push origin <my-fix-branch> --force
 
 It's our turn from there on! We will review the PR and discuss changes you might have to make before merging it! Thanks! 
 
+>Note: Sometimes you will see someone from the contributors team writing strange comments like: `test` or `test branch_functional_tests#css-gradients-tests branch_widgets#vultix/css-gradients` - don't worry about it, these are just phrases that trigger the internal CI builds.
 
 ## <a name="commit-messages"></a> Commit Message Guidelines
 
@@ -170,7 +177,7 @@ module (usually named AppModule).
 ApplicationModule.
 All other NgModules in the app (both feature and lazy-loaded ones)
 should import the NativeScriptCommonModule instead.
-The behaviour is alligned with BrowserModule and CommonModule in web
+The behavior is aligned with BrowserModule and CommonModule in web
 Angular apps. angular.io/guide/ngmodule-faq#q-browser-vs-common-module
 Migration steps:
 In all NgModules, instead of the root one, replace:
@@ -203,3 +210,111 @@ If you want to contribute, but you are not sure where to start - look for [issue
 
 
 [commit-message-format]: https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#
+
+
+## <a name="release"></a> Releasing new versions
+Instructions how to release a new version for **NativeScript Core Team Members**.
+
+![](./release-contribution-guide-schema.png?raw=true)
+
+### Here are the steps described in the diagram above.
+
+1. Checkout release branch
+```
+git checkout release
+```
+2. Create a PR to cut the release:
+```
+export RELEASE_VERSION=version
+export BRANCH="release-${RELEASE_VERSION}"
+git checkout -b ${BRANCH}
+git push --set-upstream origin ${BRANCH}
+```
+#### Merge master in release branch or cherry-pick commits. If the commits are in release branch **skip this step**.
+```
+git merge --ff-only origin/master or git cherry-pick commit-sha
+git push --set-upstream origin prep-release-version
+```
+3. Execute `npm i` to install dependencies:
+```
+npm i
+```
+4. Execute [`npm version`](https://docs.npmjs.com/cli/version) to bump the version of `tns-platform-declarations`:
+```
+cd tns-platform-declarations
+npm --no-git-tag-version version [major|minor|patch] -m "release: cut the %s release"
+cd ..
+```
+
+5. Execute [`npm version`](https://docs.npmjs.com/cli/version) to bump the version of `tns-core-modules`, 
+tag the release and update the CHANGELOG.md.
+In case we need to publish release version we need simply to use npm version x.x.x-rc
+```
+cd tns-core-modules
+npm --no-git-tag-version version [major|minor|patch] -m "release: cut the %s release"
+cd ..
+```
+6. Set correct version of **tns-core-modules-widgets** in tns-core-modules/package.json.
+Usually tns-core-modules-widgets should already have been released and we need to set the official version.
+
+7. Add changes
+```
+git add changed-files
+git commit -m "release: cut the %s release"
+git push
+```
+8. Create git tag
+```
+git tag release-version
+git push --tags
+```
+9. Create a pull request. Replace env variables ${RELEASE_VERSION} and ${BRANCH} with their values
+```
+curl -d '{"title": "release: cut the ${RELEASE_VERSION} release","body": "docs: update changelog","head": "${BRANCH}","base": "release"}' -X POST https://api.github.com/repos/NativeScript/NativeScript/pulls -H "Authorization: token ${GIT_TOKEN}"
+```
+10. Merge PR into release branch.
+
+11. If all checks has passed publish package.
+
+## Merge changes from release into master
+
+![](./merge-guidance-schema.png)
+
+### Here are steps described in the diagram above.
+
+1. Make sure you are in release branch:
+```
+git checkout release
+git pull
+```
+2. Create PR to merge changes back in master and preserve history:
+```
+export MERGE_BRANCH='merge-release-in-master'
+git checkout -b ${MERGE_BRANCH}
+git push --set-upstream origin ${MERGE_BRANCH}
+git merge origin/master
+```
+3. Resolve conflicts. Choose to keep the version of master branch. If it is needed to revert versions of modules, see at the bottom.
+
+4. Add conflicts:
+```
+git add resolved files
+```
+5. Commit changes with default merge message:
+```
+git commit
+git push
+```
+
+6. Create pull request. Replace replace env ${MERGE_BRANCH} with its value
+```
+curl -d '{"title": "chore: merge release in master","body": "chore: merge release in master","head": "merge-release-in-master","base": "master"}' -X POST https://api.github.com/repos/NativeScript/NativeScript/pulls -H "Authorization: token ${GIT_TOKEN}"
+```
+
+**If needed, revert version of modules and platform declarations to take the one from master:**
+```
+git checkout origin/master tns-platform-declarations/package.json tns-core-modules/package.json
+git commit --amend
+git push --force-with-lease
+```
+This will require to repeat steps from 1 to 4, since we need to keep the branches with the same history

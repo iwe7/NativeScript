@@ -670,7 +670,7 @@ export class CssAnimationProperty<T extends Style, U> implements definitions.Css
 
     public _valueConverter?: (value: string) => any;
 
-    constructor(private options: definitions.CssAnimationPropertyOptions<T, U>) {
+    constructor(options: definitions.CssAnimationPropertyOptions<T, U>) {
         const { valueConverter, equalityComparer, valueChanged, defaultValue } = options;
         const propertyName = options.name;
         this.name = propertyName;
@@ -1087,7 +1087,7 @@ function inheritableCssPropertyValuesOn(style: Style): Array<{ property: Inherit
 
 type PropertyInterface = Property<ViewBase, any> | CssProperty<Style, any> | CssAnimationProperty<Style, any>;
 
-export const initNativeView = profile('"properties".initNativeView', function initNativeView(view: ViewBase): void {
+export const initNativeView = profile("\"properties\".initNativeView", function initNativeView(view: ViewBase): void {
     if (view._suspendedUpdates) {
         applyPendingNativeSetters(view);
     } else {

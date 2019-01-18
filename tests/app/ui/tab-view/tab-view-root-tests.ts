@@ -1,12 +1,12 @@
-import * as helper from "../helper";
 import TKUnit = require("../../TKUnit");
-import { isIOS, isAndroid } from "tns-core-modules/platform";
+import { isAndroid } from "tns-core-modules/platform";
 import { _resetRootView } from "tns-core-modules/application/";
-import { Frame, NavigationEntry } from "tns-core-modules/ui/frame";
+import { Frame, NavigationEntry, topmost } from "tns-core-modules/ui/frame";
 import { Page } from "tns-core-modules/ui/page";
 import { TabView, TabViewItem } from "tns-core-modules/ui/tab-view";
 
-function waitUntilNavigatedTo(pages: Page[], action: Function) {
+function waitUntilNavigatedToMaxTimeout(pages: Page[], action: Function) {
+    const maxTimeout = 8;
     let completed = 0;
     function navigatedTo(args) {
         args.object.page.off("navigatedTo", navigatedTo);
@@ -15,7 +15,17 @@ function waitUntilNavigatedTo(pages: Page[], action: Function) {
 
     pages.forEach(page => page.on("navigatedTo", navigatedTo));
     action();
-    TKUnit.waitUntilReady(() => completed === pages.length, 100);
+    TKUnit.waitUntilReady(() => completed === pages.length, maxTimeout);
+}
+
+function waitUntilTabViewReady(page: Page, action: Function) {
+    action();
+
+    if (isAndroid) {
+        TKUnit.waitUntilReady(() => page.frame._currentEntry.fragment.isAdded());
+    } else {
+        TKUnit.waitUntilReady(() => page.isLoaded);
+    }
 }
 
 function createPage(i: number) {
@@ -56,7 +66,28 @@ function createTabItemsWithFrames(count: number) {
     return items;
 }
 
-export function test_ios_and_android_offset_zero_should_raise_same_events() {
+export function test_frame_topmost_matches_selectedIndex() {
+    const items = createTabItemsWithFrames(3);
+    const tabView = new TabView();
+    tabView.items = items.map(item => item.tabItem);
+
+    // iOS cannot preload tab items
+    // Android preloads 1 tab item to the sides by default
+    // set this to 0, so that both platforms behave the same.
+    tabView.androidOffscreenTabLimit = 0;
+
+    const entry: NavigationEntry = {
+        create: () => tabView
+    };
+
+    waitUntilNavigatedToMaxTimeout([items[0].page], () => _resetRootView(entry));
+    TKUnit.assertEqual(topmost().id, "Tab0 Frame0");
+
+    waitUntilNavigatedToMaxTimeout([items[1].page], () => tabView.selectedIndex = 1);
+    TKUnit.assertEqual(topmost().id, "Tab1 Frame1");
+}
+
+export function test_offset_zero_should_raise_same_events() {
     let actualEventsRaised = [];
 
     function resetActualEventsRaised() {
@@ -99,7 +130,7 @@ export function test_ios_and_android_offset_zero_should_raise_same_events() {
         create: () => tabView
     };
 
-    helper.waitUntilNavigatedTo(items[0].page, () => _resetRootView(entry));
+    waitUntilNavigatedToMaxTimeout([items[0].page], () => _resetRootView(entry));
 
     const expectedEventsRaisedAfterTabCreated = [
         [
@@ -115,7 +146,7 @@ export function test_ios_and_android_offset_zero_should_raise_same_events() {
     TKUnit.assertDeepEqual(actualEventsRaised, expectedEventsRaisedAfterTabCreated);
 
     resetActualEventsRaised();
-    helper.waitUntilNavigatedTo(items[2].page, () => tabView.selectedIndex = 2);
+    waitUntilNavigatedToMaxTimeout([items[2].page], () => tabView.selectedIndex = 2);
 
     const expectedEventsRaisedAfterSelectThirdTab = [
         [
@@ -134,8 +165,8 @@ export function test_ios_and_android_offset_zero_should_raise_same_events() {
     TKUnit.assertDeepEqual(actualEventsRaised, expectedEventsRaisedAfterSelectThirdTab);
 
     resetActualEventsRaised();
-    tabView.selectedIndex = 0;
-    TKUnit.waitUntilReady(() => items[0].page.isLoaded);
+
+    waitUntilTabViewReady(items[0].page, () => tabView.selectedIndex = 0);
 
     const expectedEventsRaisedAfterReturnToFirstTab = [
         [
@@ -191,7 +222,7 @@ export function test_android_default_offset_should_preload_1_tab_on_each_side() 
             create: () => tabView
         };
 
-        waitUntilNavigatedTo([items[0].page, items[1].page], () => _resetRootView(entry));
+        waitUntilNavigatedToMaxTimeout([items[0].page, items[1].page], () => _resetRootView(entry));
 
         const expectedEventsRaisedAfterTabCreated = [
             [
@@ -212,7 +243,7 @@ export function test_android_default_offset_should_preload_1_tab_on_each_side() 
         TKUnit.assertDeepEqual(actualEventsRaised, expectedEventsRaisedAfterTabCreated);
 
         resetActualEventsRaised();
-        helper.waitUntilNavigatedTo(items[2].page, () => tabView.selectedIndex = 2);
+        waitUntilNavigatedToMaxTimeout([items[2].page], () => tabView.selectedIndex = 2);
 
         const expectedEventsRaisedAfterSelectThirdTab = [
             [
@@ -231,8 +262,8 @@ export function test_android_default_offset_should_preload_1_tab_on_each_side() 
         TKUnit.assertDeepEqual(actualEventsRaised, expectedEventsRaisedAfterSelectThirdTab);
 
         resetActualEventsRaised();
-        tabView.selectedIndex = 0;
-        TKUnit.waitUntilReady(() => items[0].page.isLoaded);
+
+        waitUntilTabViewReady(items[0].page, () => tabView.selectedIndex = 0);
 
         const expectedEventsRaisedAfterReturnToFirstTab = [
             [
@@ -259,5 +290,5 @@ export function tearDownModule() {
         create: () => frame
     };
 
-    helper.waitUntilNavigatedTo(page, () => _resetRootView(entry));
+    waitUntilNavigatedToMaxTimeout([page], () => _resetRootView(entry));
 }

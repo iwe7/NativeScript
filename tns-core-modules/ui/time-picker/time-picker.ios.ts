@@ -1,5 +1,5 @@
 ﻿import {
-    TimePickerBase, timeProperty,
+    TimePickerBase, timeProperty, minuteIntervalProperty,
     minuteProperty, minMinuteProperty, maxMinuteProperty,
     hourProperty, minHourProperty, maxHourProperty, colorProperty, Color
 } from "./time-picker-common";
@@ -21,27 +21,35 @@ function getComponents(date: Date | NSDate): NSDateComponents {
 }
 
 export class TimePicker extends TimePickerBase {
-    private _ios: UIDatePicker;
+    nativeViewProtected: UIDatePicker;
     private _changeHandler: NSObject;
-    public nativeViewProtected: UIDatePicker;
 
     constructor() {
         super();
-
-        this._ios = UIDatePicker.new();
-        this._ios.datePickerMode = UIDatePickerMode.Time;
-
-        this._changeHandler = UITimePickerChangeHandlerImpl.initWithOwner(new WeakRef(this));
-        this._ios.addTargetActionForControlEvents(this._changeHandler, "valueChanged", UIControlEvents.ValueChanged);
-
         let components = getComponents(NSDate.date());
         this.hour = components.hour;
         this.minute = components.minute;
-        this.nativeViewProtected = this._ios;
+    }
+
+    createNativeView() {
+        const picker = UIDatePicker.new();
+        picker.datePickerMode = UIDatePickerMode.Time;
+        return picker;
+    }
+
+    initNativeView() {
+        super.initNativeView();
+        this._changeHandler = UITimePickerChangeHandlerImpl.initWithOwner(new WeakRef(this));
+        this.nativeViewProtected.addTargetActionForControlEvents(this._changeHandler, "valueChanged", UIControlEvents.ValueChanged);
+    }
+
+    disposeNativeView() {
+        this._changeHandler = null;
+        super.initNativeView();
     }
 
     get ios(): UIDatePicker {
-        return this._ios;
+        return this.nativeViewProtected;
     }
 
     [timeProperty.getDefault](): Date {
@@ -93,10 +101,10 @@ export class TimePicker extends TimePickerBase {
         this.nativeViewProtected.maximumDate = getDate(this.hour, value);
     }
 
-    [timeProperty.getDefault](): number {
+    [minuteIntervalProperty.getDefault](): number {
         return this.nativeViewProtected.minuteInterval;
     }
-    [timeProperty.setNative](value: number) {
+    [minuteIntervalProperty.setNative](value: number) {
         this.nativeViewProtected.minuteInterval = value;
     }
 
@@ -144,6 +152,6 @@ class UITimePickerChangeHandlerImpl extends NSObject {
     }
 
     public static ObjCExposedMethods = {
-        'valueChanged': { returns: interop.types.void, params: [UIDatePicker] }
+        "valueChanged": { returns: interop.types.void, params: [UIDatePicker] }
     }
 }

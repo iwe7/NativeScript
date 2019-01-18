@@ -18,8 +18,6 @@ let _skip = "_skip";
 
 let FLT_MAX = 340282346638528859811704183484516925440.000000;
 
-declare var CASpringAnimation: any;
-
 class AnimationInfo {
     public propertyNameToAnimate: string;
     public fromValue: any;
@@ -81,8 +79,8 @@ class AnimationDelegateImpl extends NSObject implements CAAnimationDelegate {
                 targetStyle[setLocal ? rotateProperty.name : rotateProperty.keyframe] = value;
                 break;
             case Properties.translate:
-                targetStyle[setLocal ? translateXProperty.name : translateXProperty.keyframe] = value;
-                targetStyle[setLocal ? translateYProperty.name : translateYProperty.keyframe] = value;
+                targetStyle[setLocal ? translateXProperty.name : translateXProperty.keyframe] = value.x;
+                targetStyle[setLocal ? translateYProperty.name : translateYProperty.keyframe] = value.y;
                 break;
             case Properties.scale:
                 targetStyle[setLocal ? scaleXProperty.name : scaleXProperty.keyframe] = value.x === 0 ? 0.001 : value.x;

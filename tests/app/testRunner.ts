@@ -1,17 +1,15 @@
 ﻿/* tslint:disable */
 import * as TKUnit from "./TKUnit";
-import { _resetRootView, getRootView } from "tns-core-modules/application";
+import { _resetRootView } from "tns-core-modules/application";
 import { messageType } from "tns-core-modules/trace";
-import { topmost, Frame, NavigationEntry } from "tns-core-modules/ui/frame";
+import { topmost, Frame } from "tns-core-modules/ui/frame";
 import { Page } from "tns-core-modules/ui/page";
 import { TextView } from "tns-core-modules/ui/text-view";
 import { Button } from "tns-core-modules/ui/button";
 import { StackLayout } from "tns-core-modules/ui/layouts/stack-layout";
 import * as platform from "tns-core-modules/platform";
 import "./ui-test";
-import * as fs from "tns-core-modules/file-system";
-import { unsetValue } from "tns-core-modules/ui/core/properties";
-import { ad } from "tns-core-modules/utils/utils";
+import { ios } from "tns-core-modules/utils/utils";
 
 Frame.defaultAnimatedNavigation = false;
 
@@ -45,14 +43,14 @@ allTests["PLATFORM"] = platformTests;
 import * as fsTests from "./file-system/file-system-tests";
 allTests["FILE-SYSTEM"] = fsTests;
 
-import * as httpTests from "./http/http-tests";
-allTests["HTTP"] = httpTests;
+// import * as httpTests from "./http/http-tests";
+// allTests["HTTP"] = httpTests;
 
-import * as xhrTests from "./xhr/xhr-tests";
-allTests["XHR"] = xhrTests;
+// import * as xhrTests from "./xhr/xhr-tests";
+// allTests["XHR"] = xhrTests;
 
-import * as fetchTests from "./fetch/fetch-tests";
-allTests["FETCH"] = fetchTests;
+// import * as fetchTests from "./fetch/fetch-tests";
+// allTests["FETCH"] = fetchTests;
 
 import * as appSettingsTests from "./application-settings/application-settings-tests";
 allTests["APPLICATION-SETTINGS"] = appSettingsTests;
@@ -99,6 +97,9 @@ allTests["FILE-NAME-RESOLVER"] = fileNameResolverTests;
 import * as weakEventsTests from "./ui/core/weak-event-listener/weak-event-listener-tests";
 allTests["WEAK-EVENTS"] = weakEventsTests;
 
+import * as traceErrorTests from "./trace/trace-error-tests";
+allTests["TRACE-ERROR"] = traceErrorTests;
+
 import * as connectivityTests from "./connectivity/connectivity-tests";
 allTests["CONNECTIVITY"] = connectivityTests;
 
@@ -132,6 +133,20 @@ allTests["STACKLAYOUT"] = stackLayoutTests;
 import * as flexBoxLayoutTests from "./ui/layouts/flexbox-layout-tests";
 allTests["FLEXBOXLAYOUT"] = flexBoxLayoutTests;
 
+import * as safeAreaLayoutTests from "./ui/layouts/safe-area-tests";
+import * as safeAreaListViewtTests from "./ui/list-view/list-view-safe-area-tests";
+import * as scrollViewSafeAreaTests from "./ui/scroll-view/scroll-view-safe-area-tests";
+import * as repeaterSafeAreaTests from "./ui/repeater/repeater-safe-area-tests";
+import * as webViewSafeAreaTests from "./ui/web-view/web-view-safe-area-tests";
+
+if (platform.isIOS && ios.MajorVersion > 10) {
+    allTests["SAFEAREALAYOUT"] = safeAreaLayoutTests;
+    allTests["SAFEAREA-LISTVIEW"] = safeAreaListViewtTests;
+    allTests["SAFEAREA-SCROLL-VIEW"] = scrollViewSafeAreaTests;
+    allTests["SAFEAREA-REPEATER"] = repeaterSafeAreaTests;
+    allTests["SAFEAREA-WEBVIEW"] = webViewSafeAreaTests;
+}
+
 import * as stylePropertiesTests from "./ui/styling/style-properties-tests";
 allTests["STYLE-PROPERTIES"] = stylePropertiesTests;
 
@@ -140,6 +155,9 @@ allTests["FRAME"] = frameTests;
 
 import * as viewTests from "./ui/view/view-tests";
 allTests["VIEW"] = viewTests;
+
+import * as viewLayoutChangedEventTests from "./ui/view/view-tests-layout-event";
+allTests["VIEW-LAYOUT-EVENT"] = viewLayoutChangedEventTests;
 
 import * as styleTests from "./ui/styling/style-tests";
 allTests["STYLE"] = styleTests;
@@ -164,9 +182,6 @@ allTests["TAB-VIEW"] = tabViewTests;
 
 import * as tabViewNavigationTests from "./ui/tab-view/tab-view-navigation-tests";
 allTests["TAB-VIEW-NAVIGATION"] = tabViewNavigationTests;
-
-import * as tabViewRootTests from "./ui/tab-view/tab-view-root-tests";
-allTests["TAB-VIEW-ROOT"] = tabViewRootTests;
 
 import * as imageTests from "./ui/image/image-tests";
 allTests["IMAGE"] = imageTests;
@@ -236,6 +251,12 @@ allTests["SEARCH-BAR"] = searchBarTests;
 
 import * as navigationTests from "./navigation/navigation-tests";
 allTests["NAVIGATION"] = navigationTests;
+
+import * as livesyncTests from "./livesync/livesync-tests";
+allTests["LIVESYNC"] = livesyncTests;
+
+import * as tabViewRootTests from "./ui/tab-view/tab-view-root-tests";
+allTests["TAB-VIEW-ROOT"] = tabViewRootTests;
 
 import * as resetRootViewTests from "./ui/root-view/reset-root-view-tests";
 allTests["RESET-ROOT-VIEW"] = resetRootViewTests;

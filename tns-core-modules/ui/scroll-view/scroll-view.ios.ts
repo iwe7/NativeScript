@@ -1,9 +1,8 @@
 ﻿import { ScrollEventData } from ".";
-import { View, layout, ScrollViewBase, scrollBarIndicatorVisibleProperty } from "./scroll-view-common";
+import {
+    View, layout, ScrollViewBase, scrollBarIndicatorVisibleProperty, isScrollEnabledProperty
+} from "./scroll-view-common";
 import { ios as iosUtils } from "../../utils/utils";
-// HACK: Webpack. Use a fully-qualified import to allow resolve.extensions(.ios.js) to
-// kick in. `../utils` doesn't seem to trigger the webpack extensions mechanism.
-import * as uiUtils from "tns-core-modules/ui/utils";
 
 export * from "./scroll-view-common";
 
@@ -38,10 +37,15 @@ export class ScrollView extends ScrollViewBase {
     private _contentMeasuredWidth: number = 0;
     private _contentMeasuredHeight: number = 0;
     private _delegate: UIScrollViewDelegateImpl;
+    
+    public createNativeView() {
+        const view = UIScrollView.new();
+        return view;
+    }
 
-    constructor() {
-        super();
-        this.nativeViewProtected = UIScrollView.new();
+    initNativeView() {
+        super.initNativeView();
+        this.updateScrollBarVisibility(this.scrollBarIndicatorVisible);
         this._setNativeClipToBounds();
     }
 
@@ -60,6 +64,9 @@ export class ScrollView extends ScrollViewBase {
     }
 
     protected updateScrollBarVisibility(value) {
+        if (!this.nativeViewProtected) {
+            return;
+        }
         if (this.orientation === "horizontal") {
             this.nativeViewProtected.showsHorizontalScrollIndicator = value;
         } else {
@@ -68,15 +75,15 @@ export class ScrollView extends ScrollViewBase {
     }
 
     get horizontalOffset(): number {
-        return this.nativeViewProtected.contentOffset.x;
+        return this.nativeViewProtected ? this.nativeViewProtected.contentOffset.x : 0;
     }
 
     get verticalOffset(): number {
-        return this.nativeViewProtected.contentOffset.y;
+        return this.nativeViewProtected ? this.nativeViewProtected.contentOffset.y : 0;
     }
 
     get scrollableWidth(): number {
-        if (this.orientation !== "horizontal") {
+        if (!this.nativeViewProtected  || this.orientation !== "horizontal") {
             return 0;
         }
 
@@ -84,11 +91,18 @@ export class ScrollView extends ScrollViewBase {
     }
 
     get scrollableHeight(): number {
-        if (this.orientation !== "vertical") {
+        if (!this.nativeViewProtected  || this.orientation !== "vertical") {
             return 0;
         }
 
         return Math.max(0, this.nativeViewProtected.contentSize.height - this.nativeViewProtected.bounds.size.height);
+    }
+
+    [isScrollEnabledProperty.getDefault](): boolean {
+        return this.nativeViewProtected.scrollEnabled;
+    }
+    [isScrollEnabledProperty.setNative](value: boolean) {
+        this.nativeViewProtected.scrollEnabled = value;
     }
 
     [scrollBarIndicatorVisibleProperty.getDefault](): boolean {
@@ -99,14 +113,14 @@ export class ScrollView extends ScrollViewBase {
     }
 
     public scrollToVerticalOffset(value: number, animated: boolean) {
-        if (this.orientation === "vertical") {
+        if (this.nativeViewProtected && this.orientation === "vertical" && this.isScrollEnabled) {
             const bounds = this.nativeViewProtected.bounds.size;
             this.nativeViewProtected.scrollRectToVisibleAnimated(CGRectMake(0, value, bounds.width, bounds.height), animated);
         }
     }
 
     public scrollToHorizontalOffset(value: number, animated: boolean) {
-        if (this.orientation === "horizontal") {
+        if (this.nativeViewProtected && this.orientation === "horizontal" && this.isScrollEnabled) {
             const bounds = this.nativeViewProtected.bounds.size;
             this.nativeViewProtected.scrollRectToVisibleAnimated(CGRectMake(value, 0, bounds.width, bounds.height), animated);
         }
@@ -124,15 +138,6 @@ export class ScrollView extends ScrollViewBase {
         this._contentMeasuredWidth = this.effectiveMinWidth;
         this._contentMeasuredHeight = this.effectiveMinHeight;
 
-        // `_automaticallyAdjustsScrollViewInsets` is set to true only if the first child 
-        // of UIViewController (Page, TabView e.g) is UIScrollView (ScrollView, ListView e.g).
-        // On iOS 11 by default UIScrollView automatically adjusts the scroll view insets, but they s
-        if (majorVersion > 10 && !this.parent._automaticallyAdjustsScrollViewInsets) {
-            // Disable automatic adjustment of scroll view insets when ScrollView 
-            // is not the first child of UIViewController.
-            this.nativeViewProtected.contentInsetAdjustmentBehavior = 2;
-        }
-
         if (child) {
             let childSize: { measuredWidth: number; measuredHeight: number };
             if (this.orientation === "vertical") {
@@ -140,10 +145,6 @@ export class ScrollView extends ScrollViewBase {
             } else {
                 childSize = View.measureChild(this, child, layout.makeMeasureSpec(0, layout.UNSPECIFIED), heightMeasureSpec);
             }
-
-            const w = layout.toDeviceIndependentPixels(childSize.measuredWidth);
-            const h = layout.toDeviceIndependentPixels(childSize.measuredHeight);
-            this.nativeViewProtected.contentSize = CGSizeMake(w, h);
 
             this._contentMeasuredWidth = Math.max(childSize.measuredWidth, this.effectiveMinWidth);
             this._contentMeasuredHeight = Math.max(childSize.measuredHeight, this.effectiveMinHeight);
@@ -156,44 +157,37 @@ export class ScrollView extends ScrollViewBase {
     }
 
     public onLayout(left: number, top: number, right: number, bottom: number): void {
-        const width = (right - left);
-        const height = (bottom - top);
+        const insets = this.getSafeAreaInsets();
+        let width = (right - left - insets.right - insets.left);
+        let height = (bottom - top - insets.bottom - insets.top);
 
-        let verticalInset: number;
         const nativeView = this.nativeViewProtected;
-        const inset = nativeView.adjustedContentInset;
-        // Prior iOS 11
-        if (inset === undefined) {
-            verticalInset = -layout.toDevicePixels(nativeView.contentOffset.y);
-            verticalInset += getTabBarHeight(this);
-        } else {
-            verticalInset = layout.toDevicePixels(inset.bottom + inset.top);
+
+        if (majorVersion > 10) {
+            // Disable automatic adjustment of scroll view insets
+            // Consider exposing this as property with all 4 modes
+            // https://developer.apple.com/documentation/uikit/uiscrollview/contentinsetadjustmentbehavior
+            nativeView.contentInsetAdjustmentBehavior = 2;
         }
 
+        let scrollWidth = width + insets.left + insets.right;
+        let scrollHeight = height + insets.top + insets.bottom;
         if (this.orientation === "horizontal") {
-            View.layoutChild(this, this.layoutView, 0, 0, Math.max(this._contentMeasuredWidth, width), height - verticalInset);
-        } else {
-            View.layoutChild(this, this.layoutView, 0, 0, width, Math.max(this._contentMeasuredHeight, height - verticalInset));
+            scrollWidth = Math.max(this._contentMeasuredWidth + insets.left + insets.right, scrollWidth);
+            width = Math.max(this._contentMeasuredWidth, width);
         }
+        else {
+            scrollHeight = Math.max(this._contentMeasuredHeight + insets.top + insets.bottom, scrollHeight);
+            height = Math.max(this._contentMeasuredHeight, height);
+        }
+
+        nativeView.contentSize = CGSizeMake(layout.toDeviceIndependentPixels(scrollWidth), layout.toDeviceIndependentPixels(scrollHeight));
+        View.layoutChild(this, this.layoutView, insets.left, insets.top, insets.left + width, insets.top + height);
     }
 
     public _onOrientationChanged() {
         this.updateScrollBarVisibility(this.scrollBarIndicatorVisible);
     }
-}
-
-function getTabBarHeight(scrollView: ScrollView): number {
-    let parent = scrollView.parent;
-    while (parent) {
-        const controller = parent.viewController;
-        if (controller instanceof UITabBarController) {
-            return uiUtils.ios.getActualHeight(controller.tabBar);
-        }
-
-        parent = parent.parent;
-    }
-
-    return 0;
 }
 
 ScrollView.prototype.recycleNativeView = "auto";

@@ -4,7 +4,7 @@ var appSettings = require("application-settings");
 
 import * as TKUnit from "../TKUnit";
 
-var stringKey:string = "stringKey";
+var stringKey: string = "stringKey";
 var boolKey: string = "boolKey";
 var numberKey: string = "numberKey";
 var noStringKey: string = "noStringKey";
@@ -58,7 +58,7 @@ export var testDefaultsWithNoDefaultValueProvided = function () {
     // << application-settings-nodefault
     TKUnit.assertEqual(defaultValue, undefined, "Default string value is not undefined");
 
-    TKUnit.assertEqual(appSettings.getBoolean(noBoolKey) , undefined, "Default boolean value is not undefined");
+    TKUnit.assertEqual(appSettings.getBoolean(noBoolKey), undefined, "Default boolean value is not undefined");
     TKUnit.assertEqual(appSettings.getNumber(noNumberKey), undefined, "Default number value is not undefined");
 };
 
@@ -108,9 +108,20 @@ export var testFlush = function () {
     var flushed = appSettings.flush();
     // will return boolean indicating whether flush to disk was successful
     // << application-settings-flush
-    TKUnit.assert(flushed, "Flush failed: "+ flushed);
+    TKUnit.assert(flushed, "Flush failed: " + flushed);
     TKUnit.assert(appSettings.hasKey(stringKey), "There is no key: " + stringKey);
 };
+
+export var testAllKeys = function () {
+    appSettings.setString(stringKey, "String value");
+    appSettings.setBoolean(boolKey, true);
+    appSettings.setNumber(numberKey, 22);
+
+    var allKeys = appSettings.getAllKeys();
+    TKUnit.assert(allKeys.indexOf(stringKey) !== -1, `${stringKey} is missing from .allKeys()`);
+    TKUnit.assert(allKeys.indexOf(boolKey) !== -1, `${boolKey} is missing from .allKeys()`);
+    TKUnit.assert(allKeys.indexOf(numberKey) !== -1, `${numberKey} is missing from .allKeys()`);
+}
 
 export var testInvalidKey = function () {
     try {

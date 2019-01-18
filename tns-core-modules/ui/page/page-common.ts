@@ -1,12 +1,11 @@
 ﻿import { Page as PageDefinition, NavigatedData, ShownModallyData } from ".";
 import {
-    ContentView, View, eachDescendant, Property, CssProperty, Color, isIOS,
-    booleanConverter, resetCSSProperties, Style, EventData, CSSType
+    ContentView, View, Property, CssProperty, Color, isIOS,
+    booleanConverter, Style, EventData, CSSType
 } from "../content-view";
-import { Frame, topmost as topmostFrame } from "../frame";
+import { Frame } from "../frame";
 import { ActionBar } from "../action-bar";
 import { KeyframeAnimationInfo } from "../animation/keyframe-animation";
-import { File, path, knownFolders } from "../../file-system";
 import { profile } from "../../profiling";
 
 export * from "../content-view";
@@ -18,17 +17,17 @@ export class PageBase extends ContentView implements PageDefinition {
     public static navigatedToEvent = "navigatedTo";
     public static navigatingFromEvent = "navigatingFrom";
     public static navigatedFromEvent = "navigatedFrom";
-  
+
     private _navigationContext: any;
     private _actionBar: ActionBar;
 
     public _frame: Frame;
-    
+
     public actionBarHidden: boolean;
     public enableSwipeBackNavigation: boolean;
     public backgroundSpanUnderStatusBar: boolean;
     public hasActionBar: boolean;
-    
+
     get navigationContext(): any {
         return this._navigationContext;
     }
@@ -90,7 +89,7 @@ export class PageBase extends ContentView implements PageDefinition {
         const frame = this.parent;
         return frame instanceof Frame ? frame : undefined;
     }
-    
+
     private createNavigatedData(eventName: string, isBackNavigation: boolean): NavigatedData {
         return {
             eventName: eventName,
@@ -103,6 +102,13 @@ export class PageBase extends ContentView implements PageDefinition {
     @profile
     public onNavigatingTo(context: any, isBackNavigation: boolean, bindingContext?: any) {
         this._navigationContext = context;
+
+        if (isBackNavigation && this._styleScope) {
+            this._styleScope.ensureSelectors();
+            if (!this._cssState.isSelectorsLatestVersionApplied()) {
+                this._onCssStateChange();
+            }
+        }
 
         //https://github.com/NativeScript/NativeScript/issues/731
         if (!isBackNavigation && bindingContext !== undefined && bindingContext !== null) {

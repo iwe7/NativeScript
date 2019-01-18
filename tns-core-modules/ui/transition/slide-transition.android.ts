@@ -97,7 +97,9 @@ export class SlideTransition extends transition.Transition {
                 }
                 break;
         }
+
         let prop;
+
         if (this._direction === "left" || this._direction === "right") {
             prop = "translationX";
         }
@@ -113,7 +115,7 @@ export class SlideTransition extends transition.Transition {
         animator.setInterpolator(this.getCurve());
         return animator;
     }
-    
+
     public toString(): string {
         return `${super.toString()} ${this._direction}`;
     }

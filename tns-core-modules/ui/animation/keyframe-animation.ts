@@ -12,7 +12,7 @@ import { View, Color } from "../core/view";
 
 import { AnimationCurve } from "../enums";
 
-import { isEnabled as traceEnabled, write as traceWrite, categories as traceCategories, messageType as traceType } from "../../trace";
+import { write as traceWrite, categories as traceCategories, messageType as traceType } from "../../trace";
 
 // Types.
 import { unsetValue } from "../core/properties";
@@ -74,7 +74,6 @@ export class KeyframeAnimation implements KeyframeAnimationDefinition {
     public iterations: number = 1;
 
     private _resolve;
-    private _reject;
     private _isPlaying: boolean;
     private _isForwards: boolean;
     private _nativeAnimations: Array<Animation>;
@@ -107,7 +106,7 @@ export class KeyframeAnimation implements KeyframeAnimationDefinition {
             }
         }
 
-        animations.map(a => a["curve"] ? a : Object.assign(a, {curve: info.curve}));
+        animations.map(a => a["curve"] ? a : Object.assign(a, { curve: info.curve }));
 
         const animation: KeyframeAnimation = new KeyframeAnimation();
         animation.delay = info.delay;
@@ -161,21 +160,19 @@ export class KeyframeAnimation implements KeyframeAnimationDefinition {
             let animation = this._nativeAnimations[0];
             this._resetAnimationValues(this._target, animation);
         }
-        this._rejectAnimationFinishedPromise();
+        this._resetAnimations();
     }
 
     public play(view: View): Promise<void> {
         if (this._isPlaying) {
-            const reason = "Keyframe animation is already playing.";
-            traceWrite(reason, traceCategories.Animation, traceType.warn);
-            return new Promise<void>((resolve, reject) => {
-                reject(reason);
+            traceWrite("Keyframe animation is already playing.", traceCategories.Animation, traceType.warn);
+            return new Promise<void>(resolve => {
+                resolve();
             });
         }
 
-        let animationFinishedPromise = new Promise<void>((resolve, reject) => {
+        let animationFinishedPromise = new Promise<void>(resolve => {
             this._resolve = resolve;
-            this._reject = reject;
         });
 
         this._isPlaying = true;
@@ -233,18 +230,27 @@ export class KeyframeAnimation implements KeyframeAnimationDefinition {
             }
         }
         else {
-            let animationDef = this.animations[index];
-            (<any>animationDef).target = view;
-            let animation = new Animation([animationDef]);
+            let animation;
+            const cachedAnimation = this._nativeAnimations[index - 1];
+
+            if (cachedAnimation) {
+                animation = cachedAnimation;
+            }
+            else {
+                let animationDef = this.animations[index];
+                (<any>animationDef).target = view;
+                animation = new Animation([animationDef]);
+                this._nativeAnimations.push(animation);
+            }
+
             // Catch the animation cancel to prevent unhandled promise rejection warnings
             animation.play().then(() => {
                 this.animate(view, index + 1, iterations);
+            }, (error: any) => {
+                traceWrite(typeof error === "string" ? error : error.message, traceCategories.Animation, traceType.warn);
             }).catch((error: any) => {
-                if (error.message.indexOf("Animation cancelled") < 0) {
-                    throw error;
-                }
+                traceWrite(typeof error === "string" ? error : error.message, traceCategories.Animation, traceType.warn);
             }); // tslint:disable-line
-            this._nativeAnimations.push(animation);
         }
     }
 
@@ -255,11 +261,10 @@ export class KeyframeAnimation implements KeyframeAnimationDefinition {
         this._resolve();
     }
 
-    public _rejectAnimationFinishedPromise() {
+    public _resetAnimations() {
         this._nativeAnimations = new Array<Animation>();
         this._isPlaying = false;
         this._target = null;
-        this._reject(new Error("Animation cancelled."));
     }
 
     private _resetAnimationValues(view: View, animation: Object) {

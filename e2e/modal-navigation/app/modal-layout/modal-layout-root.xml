@@ -1,0 +1,7 @@
+<GridLayout showingModally="onShowingModally" loaded="onLoaded"
+    navigatingTo="onNavigatingTo"
+    navigatingFrom="onNavigatingFrom"
+    navigatedTo="onNavigatedTo"
+    navigatedFrom="onNavigatedFrom">
+    <Frame defaultPage="modal/modal-page"></Frame>
+</GridLayout>

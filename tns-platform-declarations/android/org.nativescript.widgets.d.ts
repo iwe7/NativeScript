@@ -5,10 +5,12 @@
                 export class CompleteCallback {
                     constructor(implementation: ICompleteCallback);
                     onComplete(result: Object, context: Object): void;
+                    onError(error: string, context: Object): void;
                 }
 
                 export interface ICompleteCallback {
                     onComplete(result: Object, context: Object): void;
+                    onError(error: string, context: Object): void;
                 }
 
                 export module Image {
@@ -73,6 +75,7 @@
                     backgroundColor: number,
                     backgroundImage: string,
                     backgroundBitmap: android.graphics.Bitmap,
+                    backgroundGradient: LinearGradientDefinition,
                     context: android.content.Context,
                     backgroundRepeat: string,
                     backgroundPosition: string,
@@ -117,6 +120,18 @@
                 public toDebugString(): string;
             }
 
+            export class LinearGradientDefinition {
+                constructor(startX: number, endX: number, startY: number,
+                            endY: number, colors: number[], stops?: number[]);
+
+                public getStartX(): number;
+                public getStartY(): number;
+                public getEndX(): number;
+                public getEndY(): number;
+                public getColors(): number[];
+                public getStops(): number[];
+            }
+
             export class CSSValue {
                 constructor(type: string, str: string, unit: string, value: number);
                 public getType(): string;
@@ -149,6 +164,12 @@
 
                 public horizontalAlignment: HorizontalAlignment;
                 public verticalAlignment: VerticalAlignment;
+            }
+
+            export class FragmentBase extends android.support.v4.app.Fragment {
+                constructor();
+
+                public getRemovingParentFragment(): android.support.v4.app.Fragment;
             }
 
             export enum Stretch {
@@ -329,11 +350,15 @@
             export class VerticalScrollView extends android.widget.ScrollView {
                 constructor(context: android.content.Context);
                 public getScrollableLength(): number;
+                public getScrollEnabled(): boolean;
+                public setScrollEnabled(value: boolean): void;
             }
 
             export class HorizontalScrollView extends android.widget.HorizontalScrollView {
                 constructor(context: android.content.Context);
                 public getScrollableLength(): number;
+                public getScrollEnabled(): boolean;
+                public setScrollEnabled(value: boolean): void;
             }
 
             export class ImageView extends android.widget.ImageView {
@@ -353,8 +378,8 @@
 
             export class TabLayout extends android.widget.HorizontalScrollView {
                 constructor(context: android.content.Context);
-                constructor(context: android.content.Context, attrs: android.util.IAttributeSet);
-                constructor(context: android.content.Context, attrs: android.util.IAttributeSet, defStyle: number);
+                constructor(context: android.content.Context, attrs: android.util.AttributeSet);
+                constructor(context: android.content.Context, attrs: android.util.AttributeSet, defStyle: number);
 
                 setSelectedIndicatorColors(color: Array<number>): void;
                 getSelectedIndicatorColors(): Array<number>;
@@ -362,6 +387,8 @@
                 getTabTextColor(): number;
                 setSelectedTabTextColor(color: number): void;
                 getSelectedTabTextColor(): number;
+                setTabTextFontSize(fontSize: number): void;
+                getTabTextFontSize(): number;
 
                 setItems(items: Array<TabItemSpec>, viewPager: android.support.v4.view.ViewPager): void;
                 updateItemAt(position: number, itemSpec: TabItemSpec): void;
@@ -373,7 +400,7 @@
 
             export class TabViewPager extends android.support.v4.view.ViewPager {
                 constructor(context: android.content.Context);
-                constructor(context: android.content.Context, attrs: android.util.IAttributeSet);
+                constructor(context: android.content.Context, attrs: android.util.AttributeSet);
 
                 setSwipePageEnabled(enabled: boolean): void;
             }

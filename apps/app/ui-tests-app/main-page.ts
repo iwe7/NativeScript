@@ -35,15 +35,16 @@ export function pageLoaded(args: EventData) {
     examples.set("webview", "web-view/main-page");
     examples.set("progress-bar", "progress-bar/main-page");
     examples.set("date-picker", "date-picker/date-picker");
+    examples.set("nested-frames", "nested-frames/main-page");
     page.bindingContext = new MainPageViewModel(wrapLayout, examples);
 
-    const parent = page.getViewById('parentLayout');
-    const searchBar = page.getViewById('textView');
+    const parent = page.getViewById("parentLayout");
+    const searchBar = page.getViewById("textView");
     if (isAndroid) {
         parent.android.setFocusableInTouchMode(true);
         parent.android.setFocusable(true);
         searchBar.android.clearFocus();
-    }else{
-        parent.style.marginBottom=10;
+    } else {
+        parent.style.marginBottom = 10;
     }
 }

@@ -277,7 +277,7 @@ export var test_StateHighlighted_also_fires_pressedState = function () {
 
         helper.waitUntilLayoutReady(view);
 
-        view._goToVisualState('highlighted');
+        view._goToVisualState("highlighted");
 
         var actualResult = buttonTestsNative.getNativeBackgroundColor(view);
         TKUnit.assert(actualResult.hex === expectedNormalizedColor, "Actual: " + actualResult.hex + "; Expected: " + expectedNormalizedColor);
@@ -294,7 +294,7 @@ export var test_StateHighlighted_also_fires_activeState = function () {
 
         helper.waitUntilLayoutReady(view);
 
-        view._goToVisualState('highlighted');
+        view._goToVisualState("highlighted");
 
         var actualResult = buttonTestsNative.getNativeBackgroundColor(view);
         TKUnit.assert(actualResult.hex === expectedNormalizedColor, "Actual: " + actualResult.hex + "; Expected: " + expectedNormalizedColor);
@@ -393,7 +393,7 @@ export function test_setting_formattedText_With_UnknownFont_DoesNotCrash() {
     btn.style.fontFamily = "_UnknownFont";
 
     helper.buildUIAndRunTest(btn, function (views) {
-        TKUnit.waitUntilReady(() => { return btn.isLayoutValid; });
+        TKUnit.waitUntilReady(() => btn.isLayoutValid);
 
         let span = new spanModule.Span();
         span.text = "Login";
@@ -401,6 +401,21 @@ export function test_setting_formattedText_With_UnknownFont_DoesNotCrash() {
         formattedString.spans.push(span);
         btn.formattedText = formattedString;
 
-        TKUnit.waitUntilReady(() => { return btn.isLayoutValid; });
+        TKUnit.waitUntilReady(() => btn.isLayoutValid);
+    });
+}
+
+export function test_Native_Background_Color_BorderRadius_Change() {
+    let view = new buttonModule.Button();
+    view.text = "TEST";
+    helper.buildUIAndRunTest(view, function (views: Array<viewModule.View>) {
+        let page = <pagesModule.Page>views[1];
+        page.css = ".border { background-color: #00FF00; border-radius: 1; } .colorfilter { background-color: #FF0000; }";
+        view.className = "border";
+        helper.waitUntilLayoutReady(view);
+        TKUnit.assertEqual(buttonTestsNative.getNativeBackgroundColor(view).hex, "#00FF00");
+        view.className = "colorfilter";
+        helper.waitUntilLayoutReady(view);
+        TKUnit.assertEqual(buttonTestsNative.getNativeBackgroundColor(view).hex, "#FF0000");
     });
 }

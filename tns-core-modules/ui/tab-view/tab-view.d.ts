@@ -65,6 +65,11 @@ export class TabView extends View {
     selectedIndex: number;
 
     /**
+     * Gets or sets the font size of the tabs titles.
+     */
+    tabTextFontSize: number;
+
+    /**
      * Gets or sets the text color of the tabs titles.
      */
     tabTextColor: Color;
@@ -87,7 +92,7 @@ export class TabView extends View {
     /**
      * Gets the native [android widget](http://developer.android.com/reference/android/support/v4/view/ViewPager.html) that represents the user interface for this component. Valid only when running on Android OS.
      */
-    android: any /* android.view.View */;//android.support.v4.view.ViewPager;
+    android: any /* android.view.View */; //android.support.v4.view.ViewPager;
 
     /**
      * Gets the native iOS [UITabBarController](https://developer.apple.com/library/ios/documentation/UIKit/Reference/UITabBarController_Class/) that represents the user interface for this component. Valid only when running on iOS.
@@ -118,6 +123,11 @@ export class TabView extends View {
     androidTabsPosition: "top" | "bottom";
 
     /**
+     * Gets or sets a value indicating whether swipe gesture is enabled for Android.
+     */
+    androidSwipeEnabled: boolean;
+
+    /**
      * String value used when hooking to the selectedIndexChanged event.
      */
     public static selectedIndexChangedEvent: string;
@@ -139,6 +149,7 @@ export class TabView extends View {
 export const itemsProperty: Property<TabView, TabViewItem[]>;
 export const selectedIndexProperty: Property<TabView, number>;
 
+export const tabTextFontSizeProperty: CssProperty<Style, number>;
 export const tabTextColorProperty: CssProperty<Style, Color>;
 export const tabBackgroundColorProperty: CssProperty<Style, Color>;
 export const selectedTabTextColorProperty: CssProperty<Style, Color>;

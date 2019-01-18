@@ -183,12 +183,12 @@ export var testFileReadWriteBinary = function () {
     var sourceFile = fs.File.fromPath(__dirname + "/../" + fileName);
     var destinationFile = fs.knownFolders.documents().getFile(fileName);
 
-    var source = sourceFile.readSync(e=> { error = e; });
+    var source = sourceFile.readSync(e => { error = e; });
 
-    destinationFile.writeSync(source, e=> { error = e; });
-    
+    destinationFile.writeSync(source, e => { error = e; });
+
     // >> (hide)
-    var destination = destinationFile.readSync(e=> { error = e; });
+    var destination = destinationFile.readSync(e => { error = e; });
     TKUnit.assertNull(error);
     if (platform.device.os === platform.platformNames.ios) {
         TKUnit.assertTrue(source.isEqualToData(destination));
@@ -218,17 +218,17 @@ export var testGetKnownFolders = function () {
     // << file-system-known-folders
 };
 
-function _testIOSSpecificKnownFolder(knownFolderName: string){
+function _testIOSSpecificKnownFolder(knownFolderName: string) {
     let knownFolder: fs.Folder;
     let createdFile: fs.File;
-    let testFunc = function testFunc(){
+    let testFunc = function testFunc() {
         knownFolder = fs.knownFolders.ios[knownFolderName]();
         if (knownFolder) {
             createdFile = knownFolder.getFile("createdFile");
             createdFile.writeTextSync("some text");
         }
     };
-    if (platform.isIOS){
+    if (platform.isIOS) {
         testFunc();
         if (knownFolder) {
             TKUnit.assertTrue(knownFolder.isKnown, `The ${knownFolderName} folder should have its "isKnown" property set to true.`);
@@ -238,22 +238,22 @@ function _testIOSSpecificKnownFolder(knownFolderName: string){
         }
     }
     else {
-        TKUnit.assertThrows(testFunc, 
+        TKUnit.assertThrows(testFunc,
         `Trying to retrieve the ${knownFolderName} known folder on a platform different from iOS should throw!`,
         `The "${knownFolderName}" known folder is available on iOS only!`);
     }
 }
 
 export var testIOSSpecificKnownFolders = function () {
-    _testIOSSpecificKnownFolder("library");    
-    _testIOSSpecificKnownFolder("developer");    
-    _testIOSSpecificKnownFolder("desktop");    
-    _testIOSSpecificKnownFolder("downloads");    
-    _testIOSSpecificKnownFolder("movies");    
-    _testIOSSpecificKnownFolder("music");    
-    _testIOSSpecificKnownFolder("pictures");    
-    _testIOSSpecificKnownFolder("sharedPublic");    
-}
+    _testIOSSpecificKnownFolder("library");
+    _testIOSSpecificKnownFolder("developer");
+    _testIOSSpecificKnownFolder("desktop");
+    _testIOSSpecificKnownFolder("downloads");
+    _testIOSSpecificKnownFolder("movies");
+    _testIOSSpecificKnownFolder("music");
+    _testIOSSpecificKnownFolder("pictures");
+    _testIOSSpecificKnownFolder("sharedPublic");
+};
 
 export var testGetEntities = function () {
     // >> file-system-folders-content
@@ -559,10 +559,20 @@ export function test_FSEntity_Properties() {
     TKUnit.assert(file.extension === ".txt", "FileEntity.extension not working.");
     TKUnit.assert(file.isLocked === false, "FileEntity.isLocked not working.");
     TKUnit.assert(file.lastModified instanceof Date, "FileEntity.lastModified not working.");
+    TKUnit.assert(file.size === 0, "FileEntity.size not working.");
     TKUnit.assert(file.name === "Test_File.txt", "FileEntity.name not working.");
     TKUnit.assert(file.parent === documents, "FileEntity.parent not working.");
 
     file.remove();
+}
+
+export function test_FileSize(done) {
+    var file = fs.knownFolders.documents().getFile("Test_File_Size.txt");
+    file.writeText("Hello World!").then(() => {
+        TKUnit.assert(file.size === "Hello World!".length);
+        return file.remove();
+    }).then(() => done())
+    .catch(done);
 }
 
 export function test_UnlockAfterWrite(done) {

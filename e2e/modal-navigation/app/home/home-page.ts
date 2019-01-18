@@ -5,7 +5,6 @@ import { View, EventData } from "tns-core-modules/ui/core/view";
 import { Frame } from "tns-core-modules/ui/frame";
 
 export function onNavigatingTo(args: NavigatedData) {
-    const page = <StackLayout>args.object;
     console.log("home-page onNavigatingTo");
 }
 
@@ -19,6 +18,15 @@ export function onNavigatedTo(args: NavigatedData) {
 
 export function onNavigatedFrom(args: NavigatedData) {
     console.log("home-page onNavigatedFrom");
+}
+
+export function onModalNoPage(args: EventData) {
+    const view = args.object as View;
+
+    view.showModal("modal-no-page/modal-no-page",
+        "context",
+        () => console.log("home-page modal frame closed"),
+        false);
 }
 
 export function onModalFrame(args: EventData) {
@@ -43,10 +51,19 @@ export function onModalPage(args: EventData) {
 
 export function onModalLayout(args: EventData) {
     const view = args.object as View;
-    view.showModal("modal-layout/modal-layout",
+    view.showModal("modal-layout/modal-layout-root",
         "context",
         () => console.log("home-page modal layout closed"),
         false);
+}
+
+export function onAndroidBackEvents(args: EventData) {
+    const view = args.object as View;
+    view.showModal(
+        "android-back-button/android-back-button-page",
+        null,
+        () => console.log("android-back-button modal page layout closed"),
+        true, true, true);
 }
 
 export function onModalTabView(args: EventData) {
@@ -66,7 +83,10 @@ export function onModalTabView(args: EventData) {
 export function onNavigate(args: EventData) {
     const view = args.object as View;
     const page = view.page as Page;
-    page.frame.navigate("second/second-page");
+    // In the layout root case for iOS, the page will be null
+    if (page) {
+        page.frame.navigate("second/second-page");
+    }
 }
 
 export function onFrameRootViewReset() {

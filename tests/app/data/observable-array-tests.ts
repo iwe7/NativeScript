@@ -1,6 +1,5 @@
 import * as TKUnit from "../TKUnit";
 import { Label } from "tns-core-modules/ui/label";
-
 // >> observable-array-require
 import { ObservableArray, ChangedData, ChangeType } from "tns-core-modules/data/observable-array";
 // << observable-array-require
@@ -115,7 +114,7 @@ export const test_ObservableArray_popShouldRemoveTheLastElement = function () {
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.pop();
     // << observable-array-join-pop
@@ -158,7 +157,7 @@ export const test_ObservableArray_pushShouldAppendNewElement = function () {
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.push(4);
     // << observable-array-push
@@ -197,7 +196,7 @@ export const test_ObservableArray_pushShouldAppendNewElements = function () {
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.push(4, 5, 6);
     // << observable-array-push-multiple
@@ -236,7 +235,7 @@ export const test_ObservableArray_pushShouldAppendNewElementsFromSourceArray = f
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.push([4, 5, 6]);
     // << observable-array-push-source
@@ -283,7 +282,7 @@ export const test_ObservableArray_shiftShouldRemoveTheFirstElement = function ()
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.shift();
     // << observable-array-shift
@@ -344,7 +343,7 @@ export const test_ObservableArray_sortShouldReturnNewSortedArray = function () {
 export const test_ObservableArray_sortShouldReturnNewSortedArrayAccordingSpecifiedOrder = function () {
     // >> observable-array-sort-comparer
     const array = new ObservableArray([10, 100, 1]);
-    const result = array.sort((a: number, b: number) => { return a - b; });
+    const result = array.sort((a: number, b: number) => a - b);
     // << observable-array-sort-comparer
     TKUnit.assert(result[2] === 100 && result.length === 3, "ObservableArray sort() should return new sorted array according to specified order!");
 };
@@ -355,7 +354,7 @@ export const test_ObservableArray_spliceShouldRemoveSpecifiedNumberOfElementsSta
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.splice(1, 2);
     // << observable-array-splice
@@ -431,7 +430,7 @@ export const test_ObservableArray_unshiftShouldInsertNewElementsFromTheStart = f
     // >> (hide)
     const viewBase = new Label();
     viewBase.set("testProperty", 0);
-    viewBase.bind({ sourceProperty: "length", targetProperty: "testProperty" }, array);
+    viewBase.bind({sourceProperty: "length", targetProperty: "testProperty"}, array);
     // << (hide)
     const result = array.unshift(4, 5);
     // << observable-array-unshift
@@ -633,6 +632,48 @@ export const test_reduce_isDefined = function () {
     TKUnit.assert(typeof (array.reduce) === "function", "Method 'reduce()' should be defined!");
 };
 
+export const test_reduce_without_initial_value = function () {
+    const sa = [1, 2, 3];
+    let array: ObservableArray<number> = new ObservableArray(sa);
+    const result = array.reduce((a, b) => a + b);
+    TKUnit.assertEqual(result, 6, "ObservableArray reduce function broken when initialValue is missing");
+};
+
+export const test_reduce_with_initial_value = function () {
+    const sa = [1, 2, 3];
+    let array: ObservableArray<number> = new ObservableArray(sa);
+    const result = array.reduce((a, b) => a + b, 5);
+    TKUnit.assertEqual(result, 11, "ObservableArray reduce function broken when Initial Value is passed.");
+};
+
+export const test_reduce_with_zero_as_initial_value = function () {
+    const sa = [{prop: 1}, {prop: 2}, {prop: 3}];
+    let array: ObservableArray<any> = new ObservableArray(sa);
+    const result = array.reduce((a, b) => a + b.prop, 0);
+    TKUnit.assertEqual(result, 6, "ObservableArray reduce function broken when Initial Value is zero.");
+};
+
 export const test_reduceRight_isDefined = function () {
     TKUnit.assert(typeof (array.reduceRight) === "function", "Method 'reduceRight()' should be defined!");
+};
+
+export const test_reduceRight_without_initial_value = function () {
+    const sa = [1, 2, 3];
+    let array: ObservableArray<number> = new ObservableArray(sa);
+    const result = array.reduceRight((a, b) => a + b);
+    TKUnit.assertEqual(result, 6, "ObservableArray reduceRight function broken when initialValue is missing");
+};
+
+export const test_reduceRight_with_initial_value = function () {
+    const sa = [1, 2, 3];
+    let array: ObservableArray<number> = new ObservableArray(sa);
+    const result = array.reduceRight((a, b) => a + b, 5);
+    TKUnit.assertEqual(result, 11, "ObservableArray reduceRight function broken when Initial Value is passed.");
+};
+
+export const test_reduceRight_with_zero_as_initial_value = function () {
+    const sa = [{prop: 1}, {prop: 2}, {prop: 3}];
+    let array: ObservableArray<any> = new ObservableArray(sa);
+    const result = array.reduceRight((a, b) => a + b.prop, 0);
+    TKUnit.assertEqual(result, 6, "ObservableArray reduceRight function broken when Initial Value is zero.");
 };

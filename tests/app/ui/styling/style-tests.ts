@@ -9,7 +9,7 @@ import * as tabViewModule from "tns-core-modules/ui/tab-view";
 import * as helper from "../../ui/helper";
 import * as types from "tns-core-modules/utils/types";
 import * as viewModule from "tns-core-modules/ui/core/view";
-import { resolveFileNameFromUrl } from "tns-core-modules/ui/styling/style-scope";
+import { resolveFileNameFromUrl, removeTaggedAdditionalCSS, addTaggedAdditionalCSS } from "tns-core-modules/ui/styling/style-scope";
 import { unsetValue } from "tns-core-modules/ui/core/view";
 import * as color from "tns-core-modules/color";
 
@@ -364,7 +364,7 @@ export const test_composite_selector_type_and_class = function () {
         TKUnit.assert(lblWithClass.style.color === undefined, "lblWithClass color should not have a value");
     }
 
-    helper.buildUIAndRunTest(testStack, testFunc, testCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: testCss });
 }
 
 export const test_composite_selector_type_class_state = function () {
@@ -394,7 +394,7 @@ export const test_composite_selector_type_class_state = function () {
 
         TKUnit.assertNull(lblWithClass.style.color, "Color should not have a value");
     }
-    helper.buildUIAndRunTest(testStack, testFunc, testCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: testCss });
 }
 
 export const test_style_is_applied_when_control_is_added_after_load = function () {
@@ -433,7 +433,7 @@ export function test_styles_are_updated_when_cssClass_is_set() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 export function test_styles_are_updated_when_cssClass_is_changed() {
@@ -454,7 +454,7 @@ export function test_styles_are_updated_when_cssClass_is_changed() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 export function test_styles_are_updated_when_cssClass_is_cleared() {
@@ -475,7 +475,7 @@ export function test_styles_are_updated_when_cssClass_is_cleared() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 export function test_styles_are_updated_when_id_is_set() {
@@ -495,7 +495,7 @@ export function test_styles_are_updated_when_id_is_set() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 export function test_styles_are_updated_when_id_is_changed() {
@@ -516,7 +516,7 @@ export function test_styles_are_updated_when_id_is_changed() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 export function test_styles_are_updated_when_id_is_cleared() {
@@ -537,7 +537,7 @@ export function test_styles_are_updated_when_id_is_cleared() {
         helper.assertViewBackgroundColor(btn2, "#111111");
     };
 
-    helper.buildUIAndRunTest(testStack, testFunc, changeIdOrClassTestCss);
+    helper.buildUIAndRunTest(testStack, testFunc, { pageCss: changeIdOrClassTestCss });
 }
 
 const typeSelector = "button { color: blue } ";
@@ -698,7 +698,7 @@ export function test_set_invalid_CSS_values_dont_cause_crash() {
 
     helper.buildUIAndRunTest(testButton, (views: Array<viewModule.View>) => {
         TKUnit.assertEqual(30, testButton.style.fontSize);
-    }, invalidCSS);
+    }, { pageCss: invalidCSS });
 }
 
 // Check Mixed, Upper and lower case properties
@@ -717,7 +717,7 @@ export function test_set_mixed_CSS_cases_works() {
         TKUnit.assertEqual(30, testButton.style.fontSize);
         helper.assertViewBackgroundColor(testButton, "#FF0000");
         helper.assertViewColor(testButton, "#0000FF");
-    }, casedCSS);
+    }, { pageCss: casedCSS });
 }
 
 export function test_basic_hierarchical_selectors() {
@@ -742,7 +742,7 @@ export function test_basic_hierarchical_selectors() {
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#FF0000");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_basic_hierarchical_direct_child_selectors() {
@@ -768,7 +768,7 @@ export function test_basic_hierarchical_direct_child_selectors() {
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#00FF00");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_basic_hierarchical_direct_child_more_levels_selectors() {
@@ -794,7 +794,7 @@ export function test_basic_hierarchical_direct_child_more_levels_selectors() {
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#FF0000");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_hierarchical_direct_child_more_levels_diff_selector_types() {
@@ -822,7 +822,7 @@ export function test_hierarchical_direct_child_more_levels_diff_selector_types()
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#FF0000");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_hierarchical_direct_child_more_levels_diff_selector_types2() {
@@ -851,7 +851,7 @@ export function test_hierarchical_direct_child_more_levels_diff_selector_types2(
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#FF0000");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_hierarchical_direct_child_more_levels_diff_selector_types_invalid() {
@@ -880,7 +880,7 @@ export function test_hierarchical_direct_child_more_levels_diff_selector_types_i
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#00FF00");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_hierarchical_direct_child_more_levels_diff_selector_types_invalid_middle() {
@@ -909,7 +909,7 @@ export function test_hierarchical_direct_child_more_levels_diff_selector_types_i
         helper.assertViewBackgroundColor(stack.getViewById("testButton2"), "#00FF00");
     }
 
-    helper.buildUIAndRunTest(stack, testFunc, testCss);
+    helper.buildUIAndRunTest(stack, testFunc, { pageCss: testCss });
 }
 
 export function test_type_attr_selector() {
@@ -921,7 +921,7 @@ export function test_type_attr_selector() {
     let testFunc = function (views: Array<viewModule.View>) {
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_class_attr_selector() {
@@ -934,7 +934,7 @@ export function test_class_attr_selector() {
     let testFunc = function (views: Array<viewModule.View>) {
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_id_attr_selector() {
@@ -947,7 +947,7 @@ export function test_id_attr_selector() {
     let testFunc = function (views: Array<viewModule.View>) {
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_type_attr_value_selector() {
@@ -959,7 +959,7 @@ export function test_type_attr_value_selector() {
     let testFunc = function (views: Array<viewModule.View>) {
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_type_attr_invalid_value_selector() {
@@ -972,7 +972,7 @@ export function test_type_attr_invalid_value_selector() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_correct_syntax() {
@@ -985,7 +985,7 @@ export function test_tilde_attr_selector_correct_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_correct_syntax1() {
@@ -998,7 +998,7 @@ export function test_tilde_attr_selector_correct_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_correct_syntax2() {
@@ -1011,7 +1011,7 @@ export function test_tilde_attr_selector_correct_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_incorrect_syntax() {
@@ -1024,7 +1024,7 @@ export function test_tilde_attr_selector_incorrect_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_incorrect_syntax1() {
@@ -1037,7 +1037,7 @@ export function test_tilde_attr_selector_incorrect_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_tilde_attr_selector_incorrect_syntax2() {
@@ -1050,7 +1050,7 @@ export function test_tilde_attr_selector_incorrect_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_pipe_attr_selector_correct_syntax() {
@@ -1063,7 +1063,7 @@ export function test_pipe_attr_selector_correct_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_pipe_attr_selector_correct_syntax1() {
@@ -1076,7 +1076,7 @@ export function test_pipe_attr_selector_correct_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_pipe_attr_selector_incorrect_syntax() {
@@ -1089,7 +1089,7 @@ export function test_pipe_attr_selector_incorrect_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_pipe_attr_selector_incorrect_syntax1() {
@@ -1102,7 +1102,7 @@ export function test_pipe_attr_selector_incorrect_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_pipe_attr_selector_incorrect_syntax2() {
@@ -1115,7 +1115,7 @@ export function test_pipe_attr_selector_incorrect_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_power_attr_selector_correct_syntax() {
@@ -1128,7 +1128,7 @@ export function test_power_attr_selector_correct_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_power_attr_selector_correct_syntax1() {
@@ -1141,7 +1141,7 @@ export function test_power_attr_selector_correct_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_power_attr_selector_correct_synta2() {
@@ -1154,7 +1154,7 @@ export function test_power_attr_selector_correct_synta2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_power_attr_selector_incorrect_syntax() {
@@ -1167,7 +1167,7 @@ export function test_power_attr_selector_incorrect_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_power_attr_selector_incorrect_syntax1() {
@@ -1180,7 +1180,7 @@ export function test_power_attr_selector_incorrect_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_correct_syntax() {
@@ -1193,7 +1193,7 @@ export function test_dollar_attr_selector_correct_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_correct_syntax1() {
@@ -1206,7 +1206,7 @@ export function test_dollar_attr_selector_correct_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_correct_syntax2() {
@@ -1219,7 +1219,7 @@ export function test_dollar_attr_selector_correct_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_incorrect_syntax() {
@@ -1232,7 +1232,7 @@ export function test_dollar_attr_selector_incorrect_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_incorrect_syntax1() {
@@ -1245,7 +1245,7 @@ export function test_dollar_attr_selector_incorrect_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_dollar_attr_selector_incorrect_syntax2() {
@@ -1258,7 +1258,7 @@ export function test_dollar_attr_selector_incorrect_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax() {
@@ -1271,7 +1271,7 @@ export function test_star_attr_selector_correct_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax1() {
@@ -1284,7 +1284,7 @@ export function test_star_attr_selector_correct_syntax1() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax2() {
@@ -1297,7 +1297,7 @@ export function test_star_attr_selector_correct_syntax2() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax3() {
@@ -1310,7 +1310,7 @@ export function test_star_attr_selector_correct_syntax3() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax4() {
@@ -1323,7 +1323,7 @@ export function test_star_attr_selector_correct_syntax4() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_correct_syntax5() {
@@ -1336,7 +1336,7 @@ export function test_star_attr_selector_correct_syntax5() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#FF0000");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_star_attr_selector_incorrect_syntax() {
@@ -1349,7 +1349,7 @@ export function test_star_attr_selector_incorrect_syntax() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_alone_attr_selector() {
@@ -1362,12 +1362,12 @@ export function test_alone_attr_selector() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_UsingSameSelectors_ShouldApplyLatest() {
     let testButton = new buttonModule.Button();
-    testButton.className = 'green';
+    testButton.className = "green";
 
     let testCss = ".green { background-color: #FF0000; } .green { background-color: #00FF00; }";
 
@@ -1375,12 +1375,12 @@ export function test_UsingSameSelectors_ShouldApplyLatest() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_UsingSameSelectorsWithSpecific_ShouldApplyLatest() {
     let testButton = new buttonModule.Button();
-    testButton.className = 'red green';
+    testButton.className = "red green";
 
     let testCss = ".red { background-color: #FF0000; } Button.green { background-color: #00FF00; }";
 
@@ -1388,14 +1388,14 @@ export function test_UsingSameSelectorsWithSpecific_ShouldApplyLatest() {
         // style from correct type css should be applied
         helper.assertViewBackgroundColor(testButton, "#00FF00");
     }
-    helper.buildUIAndRunTest(testButton, testFunc, testCss);
+    helper.buildUIAndRunTest(testButton, testFunc, { pageCss: testCss });
 }
 
 export function test_CascadingClassNamesAppliesAfterPageLoad() {
     const stack = new stackModule.StackLayout();
     const label = new labelModule.Label();
     label.text = "Some text";
-    label.className = 'lab1';
+    label.className = "lab1";
     stack.addChild(label);
 
     application.addCss(".added { background-color: red; } .added .lab1 { background-color: blue; } .lab1 { color: red}");
@@ -1409,52 +1409,104 @@ export function test_CascadingClassNamesAppliesAfterPageLoad() {
 }
 
 export function test_resolveFileNameFromUrl_local_file_tilda() {
-    const localFileExistsMock = (fileName: string ) => true;
-    let url = "~/theme/core.css";
-    let appDirectory = "app";
-    let expected = `${appDirectory}/theme/core.css`;
-    let result = resolveFileNameFromUrl(url, appDirectory, localFileExistsMock);
+    const localFileExistsMock = (fileName: string) => true;
+    const url = "~/theme/core.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/theme/core.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, localFileExistsMock);
 
     TKUnit.assertEqual(result, expected, "Should resolve local file with leading tilda (~/)");
 }
 
 export function test_resolveFileNameFromUrl_local_file_no_tilda() {
-    const localFileExistsMock = (fileName: string ) => true;
-    let url = "theme/core.css";
-    let appDirectory = "app";
-    let expected = `${appDirectory}/theme/core.css`;
-    let result = resolveFileNameFromUrl(url, appDirectory, localFileExistsMock);
+    const localFileExistsMock = (fileName: string) => true;
+    const url = "theme/core.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/theme/core.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, localFileExistsMock);
 
     TKUnit.assertEqual(result, expected, "Should resolve local file without leading tilda (no ~/)");
 }
 
 export function test_resolveFileNameFromUrl_external_file_tilda() {
     const externalFileExistsMock = (fileName: string) => (fileName.indexOf("tns_modules") !== -1);
-    let url = "~/theme/core.css";
-    let appDirectory = "app";
-    let expected = `${appDirectory}/tns_modules/theme/core.css`;
-    let result = resolveFileNameFromUrl(url, appDirectory, externalFileExistsMock);
+    const url = "~/theme/core.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/tns_modules/theme/core.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, externalFileExistsMock);
 
     TKUnit.assertEqual(result, expected, "Should resolve file from tns_modules with leading tilda (~/)");
 }
 
 export function test_resolveFileNameFromUrl_external_file_no_tilda() {
     const externalFileExistsMock = (fileName: string) => (fileName.indexOf("tns_modules") !== -1);
-    let url = "theme/core.css";
-    let appDirectory = "app";
-    let expected = `${appDirectory}/tns_modules/theme/core.css`;
-    let result = resolveFileNameFromUrl(url, appDirectory, externalFileExistsMock);
+    const url = "theme/core.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/tns_modules/theme/core.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, externalFileExistsMock);
 
     TKUnit.assertEqual(result, expected, "Should resolve file from tns_modules without leading tilda (no ~/)");
 }
 
+export function test_resolveFileNameFromUrl_import_relative_file_curent_dir() {
+    const importedFileExistsMock = (fileName: string) => (fileName.indexOf("views") !== -1);
+    const importSource = "app/views/main-page.css";
+    const url = "./common.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/views/common.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, importedFileExistsMock, importSource);
+
+    TKUnit.assertEqual(result, expected, "Should resolve relative file to current directory");
+}
+
+export function test_resolveFileNameFromUrl_import_relative_file_parent_dir() {
+    const importedFileExistsMock = (fileName: string) => (fileName.indexOf("views") !== -1);
+    const importSource = "app/views/shared/main-page.css";
+    const url = "../common.css";
+    const appDirectory = "app";
+    const expected = `${appDirectory}/views/common.css`;
+    const result = resolveFileNameFromUrl(url, appDirectory, importedFileExistsMock, importSource);
+
+    TKUnit.assertEqual(result, expected, "Should resolve relative file to parent directory");
+}
+
 export function test_resolveFileNameFromUrl_unexisting_file() {
     const fileDoesNotExistMock = (fileName: string) => false;
-    let url = "~/theme/core.css";
-    let appDirectory = "app";
-    let result = resolveFileNameFromUrl(url, appDirectory, fileDoesNotExistMock);
+    const url = "~/theme/core.css";
+    const appDirectory = "app";
+    const result = resolveFileNameFromUrl(url, appDirectory, fileDoesNotExistMock);
 
     TKUnit.assertNull(result, "Shouldn't resolve unexisting file");
+}
+
+export function test_checkAddRemoveCSS() {
+    const css1 = "#test_checkAddRemoveCSS_label { color: #FF0000; }";
+    const css2 = "#test_checkAddRemoveCSS_label { color: #00FF00; }";
+    const label = new labelModule.Label();
+    label.text = "color coming from updated rules";
+    label.id = "test_checkAddRemoveCSS_label";
+
+    helper.buildUIAndRunTest(label, function (views: Array<viewModule.View>) {
+        const page = <pageModule.Page>views[1];
+
+        // Add Red, we have to then trigger the page's CSS state change, for it to refresh the label's css with the new global rule
+        addTaggedAdditionalCSS(css1, "red");
+        page._onCssStateChange();
+        helper.assertViewColor(label, "#FF0000");
+
+        // Add Green (should override red)
+        addTaggedAdditionalCSS(css2, "green");
+        page._onCssStateChange();
+        helper.assertViewColor(label, "#00FF00");
+
+        // Remove Green (Should revert to red, since we removed the green rule)
+        removeTaggedAdditionalCSS("green");
+        page._onCssStateChange();
+        helper.assertViewColor(label, "#FF0000");
+
+        //Cleanup
+        removeTaggedAdditionalCSS("red");
+    });
 }
 
 // <snippet module="ui/styling" title="styling">

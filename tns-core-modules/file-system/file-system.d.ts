@@ -23,7 +23,7 @@ export class FileSystemEntity {
     path: string;
 
     /**
-     * Gets the Folder object representing the parent of this entity. 
+     * Gets the Folder object representing the parent of this entity.
      * Will be null for a root folder like Documents or Temporary.
      * This property is readonly.
      */
@@ -66,6 +66,11 @@ export class File extends FileSystemEntity {
      * Gets the extension of the file.
      */
     extension: string;
+
+    /**
+     * Gets the size in bytes of the file.
+     */
+    size: number;
 
     /**
      * Gets a value indicating whether the file is currently locked, meaning a background operation associated with this file is running.
@@ -208,51 +213,51 @@ export module knownFolders {
      * iOS - this folder is read-only and contains the app and all its resources.
      */
     export function currentApp(): Folder;
-    
+
     /**
      * Contains iOS-specific known folders.
      */
     module ios {
         /**
-         * Gets the NSLibraryDirectory.
+         * Gets the NSLibraryDirectory. Note that the folder will not be created if it did not exist. 
          */
         export function library(): Folder;
-        
+
         /**
-         * Gets the NSDeveloperDirectory.
+         * Gets the NSDeveloperDirectory. Note that the folder will not be created if it did not exist.
          */
         export function developer(): Folder;
-        
+
         /**
-         * Gets the NSDesktopDirectory.
+         * Gets the NSDesktopDirectory. Note that the folder will not be created if it did not exist.
          */
         export function desktop(): Folder;
-        
+
         /**
-         * Gets the NSDownloadsDirectory.
+         * Gets the NSDownloadsDirectory. Note that the folder will not be created if it did not exist.
          */
         export function downloads(): Folder;
-        
+
         /**
-         * Gets the NSMoviesDirectory.
+         * Gets the NSMoviesDirectory. Note that the folder will not be created if it did not exist.
          */
         export function movies(): Folder;
-        
+
         /**
-         * Gets the NSMusicDirectory.
+         * Gets the NSMusicDirectory. Note that the folder will not be created if it did not exist.
          */
         export function music(): Folder;
-        
+
         /**
-         * Gets the NSPicturesDirectory.
+         * Gets the NSPicturesDirectory. Note that the folder will not be created if it did not exist.
          */
         export function pictures(): Folder;
-        
+
         /**
-         * Gets the NSSharedPublicDirectory.
+         * Gets the NSSharedPublicDirectory. Note that the folder will not be created if it did not exist.
          */
         export function sharedPublic(): Folder;
-    } 
+    }
 }
 
 /**

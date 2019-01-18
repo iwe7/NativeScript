@@ -57,6 +57,11 @@ export class Frame extends View {
     navigate(entry: NavigationEntry);
 
     /**
+     * Used to control the visibility the Navigation Bar in iOS and the Action Bar in Android.
+     */
+    public actionBarVisibility: "auto" | "never" | "always";
+
+    /**
      * Gets the back stack of this instance.
      */
     backStack: Array<BackstackEntry>;
@@ -128,6 +133,10 @@ export class Frame extends View {
     /**
      * @private
      */
+    _executingEntry: BackstackEntry;
+    /**
+     * @private
+     */
     _processNavigationQueue(page: Page);
     /**
      * @private
@@ -149,6 +158,10 @@ export class Frame extends View {
      * @private
      */
     _pushInFrameStack();
+    /**
+     * @private
+     */
+    _pushInFrameStackRecursive();
     /**
      * @private
      */
@@ -174,7 +187,7 @@ export class Frame extends View {
 }
 
 /**
- * Sets the extended android.app.Fragment class to the Frame and navigation routine. An instance of this class will be created to represent the Page currently visible on the srceen. This method is available only for the Android platform.
+ * Sets the extended android.support.v4.app.Fragment class to the Frame and navigation routine. An instance of this class will be created to represent the Page currently visible on the srceen. This method is available only for the Android platform.
  */
 export function setFragmentClass(clazz: any): void;
 
@@ -244,7 +257,7 @@ export interface NavigationEntry extends ViewEntry {
     transitioniOS?: NavigationTransition;
 
     /**
-     * Specifies an optional navigation transition for iOS. If not specified, the default platform transition will be used.
+     * Specifies an optional navigation transition for Android. If not specified, the default platform transition will be used.
      */
     transitionAndroid?: NavigationTransition;
 
@@ -364,12 +377,12 @@ export interface AndroidFrame extends Observable {
     /**
      * Gets the native [android Activity](http://developer.android.com/reference/android/app/Activity.html) instance associated with this Frame. In case of nested Frame objects, this property points to the activity of the root Frame.
      */
-    activity: any /* android.app.Activity */;
+    activity: any /* android.support.v7.app.AppCompatActivity */;
 
     /**
      * Gets the current (foreground) activity for the application. This property will recursively traverse all existing Frame objects and check for own Activity property.
      */
-    currentActivity: any /* android.app.Activity */;
+    currentActivity: any /* android.support.v7.app.AppCompatActivity */;
 
     /**
      * Gets the actionBar property of the currentActivity.
@@ -388,7 +401,7 @@ export interface AndroidFrame extends Observable {
     cachePagesOnNavigate: boolean;
 
     /**
-     * Finds the native android.app.Fragment instance created for the specified Page.
+     * Finds the native android.support.v4.app.Fragment instance created for the specified Page.
      * @param page The Page instance to search for.
      */
     fragmentForPage(entry: BackstackEntry): any;
@@ -402,6 +415,7 @@ export interface AndroidActivityCallbacks {
     onSaveInstanceState(activity: any, outState: any, superFunc: Function): void;
     onStart(activity: any, superFunc: Function): void;
     onStop(activity: any, superFunc: Function): void;
+    onPostResume(activity: any, superFunc: Function): void;
     onDestroy(activity: any, superFunc: Function): void;
     onBackPressed(activity: any, superFunc: Function): void;
     onRequestPermissionsResult(activity: any, requestCode: number, permissions: Array<String>, grantResults: Array<number>, superFunc: Function): void;
@@ -446,7 +460,7 @@ export interface iOSFrame {
     //@endprivate
 }
 
-export function setActivityCallbacks(activity: any /*android.app.Activity*/): void;
+export function setActivityCallbacks(activity: any /*android.support.v7.app.AppCompatActivity*/): void;
 //@private
 /**
  * @private
@@ -455,5 +469,5 @@ export function reloadPage(): void;
 /**
  * @private
  */
-export function setFragmentCallbacks(fragment: any /*android.app.Fragment*/): void;
+export function setFragmentCallbacks(fragment: any /*android.support.v4.app.Fragment*/): void;
 //@endprivate

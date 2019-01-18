@@ -4,24 +4,19 @@ import { Frame } from "../frame";
 // Types.
 import { ios as iosView } from "../core/view";
 import {
-    PageBase, View, ViewBase, layout,
-    actionBarHiddenProperty, statusBarStyleProperty,
-    traceEnabled, traceWrite, traceCategories, PercentLength, Color
+    PageBase, View, layout,
+    actionBarHiddenProperty, statusBarStyleProperty, Color
 } from "./page-common";
-import { ios as iosApp } from "../../application";
-import { device } from "../../platform";
-// HACK: Webpack. Use a fully-qualified import to allow resolve.extensions(.ios.js) to
-// kick in. `../utils` doesn't seem to trigger the webpack extensions mechanism.
-import * as uiUtils from "../../ui/utils";
+
 import { profile } from "../../profiling";
+import { ios as iosUtils } from "../../utils/utils";
 
 export * from "./page-common";
 
-import { ios } from "../../utils/utils";
-import getter = ios.getter;
-
 const ENTRY = "_entry";
 const DELEGATE = "_delegate";
+
+const majorVersion = iosUtils.MajorVersion;
 
 function isBackNavigationTo(page: Page, entry): boolean {
     const frame = page.frame;
@@ -82,7 +77,6 @@ class UIViewControllerImpl extends UIViewController {
 
         const frame = this.navigationController ? (<any>this.navigationController).owner : null;
         const newEntry = this[ENTRY];
-        const modalParent = owner._modalParent;
 
         // Don't raise event if currentPage was showing modal page.
         if (!owner._presentedViewController && newEntry && (!frame || frame.currentPage !== owner)) {
@@ -129,7 +123,7 @@ class UIViewControllerImpl extends UIViewController {
         // Skip navigation events if modal page is shown.
         if (!owner._presentedViewController && frame) {
             const newEntry = this[ENTRY];
-            
+
             let isBack: boolean;
             // We are on the current page which happens when navigation is canceled so isBack should be false.
             if (frame.currentPage === owner && frame._navigationQueue.length === 0) {
@@ -223,6 +217,39 @@ class UIViewControllerImpl extends UIViewController {
         if (owner) {
             // layout(owner.actionBar)
             // layout(owner.content)
+
+            if (majorVersion >= 11) {
+                // Handle nested Page safe area insets application.
+                // A Page is nested if its Frame has a parent.
+                // If the Page is nested, cross check safe area insets on top and bottom with Frame parent.
+                const frame = owner.parent;
+                // There is a legacy scenario where Page is not in a Frame - the root of a Modal View, so it has no parent.
+                let frameParent = frame && frame.parent;
+
+                // Handle Angular scenario where TabView is in a ProxyViewContainer
+                // It is possible to wrap components in ProxyViewContainers indefinitely
+                // Not using instanceof ProxyViewContainer to avoid circular dependency
+                // TODO: Try moving UIViewControllerImpl out of page module
+                while (frameParent && !frameParent.nativeViewProtected) {
+                    frameParent = frameParent.parent;
+                }
+
+                if (frameParent) {
+                    const parentPageInsetsTop = frameParent.nativeViewProtected.safeAreaInsets.top;
+                    const currentInsetsTop = this.view.safeAreaInsets.top;
+                    const additionalInsetsTop = Math.max(parentPageInsetsTop - currentInsetsTop, 0);
+
+                    const parentPageInsetsBottom = frameParent.nativeViewProtected.safeAreaInsets.bottom;
+                    const currentInsetsBottom = this.view.safeAreaInsets.bottom;
+                    const additionalInsetsBottom = Math.max(parentPageInsetsBottom - currentInsetsBottom, 0);
+
+                    if (additionalInsetsTop > 0 || additionalInsetsBottom > 0) {
+                        const additionalInsets = new UIEdgeInsets({ top: additionalInsetsTop, left: 0, bottom: additionalInsetsBottom, right: 0 });
+                        this.additionalSafeAreaInsets = additionalInsets;
+                    }
+                }
+            }
+
             iosView.layoutView(this, owner);
         }
     }
@@ -240,8 +267,11 @@ export class Page extends PageBase {
         super();
         const controller = UIViewControllerImpl.initWithOwner(new WeakRef(this));
         this.viewController = this._ios = controller;
-        this.nativeViewProtected = controller.view;
-        this.nativeViewProtected.backgroundColor = whiteColor;
+        controller.view.backgroundColor = whiteColor;
+    }
+
+    createNativeView() {
+        return this.viewController.view;
     }
 
     get ios(): UIViewController {
@@ -318,7 +348,27 @@ export class Page extends PageBase {
     public onLayout(left: number, top: number, right: number, bottom: number) {
         const { width: actionBarWidth, height: actionBarHeight } = this.actionBar._getActualSize;
         View.layoutChild(this, this.actionBar, 0, 0, actionBarWidth, actionBarHeight);
-        View.layoutChild(this, this.layoutView, left, top, right, bottom);
+
+        const insets = this.getSafeAreaInsets();
+
+        if (majorVersion <= 10) {
+            // iOS 10 and below don't have safe area insets API,
+            // there we need only the top inset on the Page
+            insets.top = layout.round(layout.toDevicePixels(this.viewController.view.safeAreaLayoutGuide.layoutFrame.origin.y));
+        }
+
+        const childLeft = 0 + insets.left;
+        const childTop = 0 + insets.top;
+        const childRight = right - insets.right;
+        let childBottom = bottom - insets.bottom;
+
+        if (majorVersion >= 11 && this.actionBar.flat) {
+            // on iOS 11 the flat action bar changes the fullscreen size
+            // the top of the page is the new fullscreen
+            childBottom -= top;
+        }
+
+        View.layoutChild(this, this.layoutView, childLeft, childTop, childRight, childBottom);
     }
 
     public _addViewToNativeVisualTree(child: View, atIndex: number): boolean {
@@ -336,7 +386,7 @@ export class Page extends PageBase {
             if (this.viewController.presentedViewController === viewController) {
                 return true;
             }
-            
+
             this.viewController.addChildViewController(viewController);
         }
 

@@ -18,13 +18,23 @@ export * from "./application-common";
 import { createViewFromEntry } from "../ui/builder";
 import { ios as iosView, View } from "../ui/core/view";
 import { Frame, NavigationEntry } from "../ui/frame";
-import { ios } from "../ui/utils";
 import * as utils from "../utils/utils";
 import { profile, level as profilingLevel, Level } from "../profiling";
 
-class Responder extends UIResponder {
-    //
-}
+// NOTE: UIResponder with implementation of window - related to https://github.com/NativeScript/ios-runtime/issues/430 
+// TODO: Refactor the UIResponder to use Typescript extends when this issue is resolved:
+// https://github.com/NativeScript/ios-runtime/issues/1012
+var Responder = (<any>UIResponder).extend({
+    get window() {
+        return iosApp ? iosApp.window : undefined;
+    },
+    set window(setWindow) {
+        // NOOP
+    }
+}, {
+        protocols: [UIApplicationDelegate]
+    }
+);
 
 class NotificationObserver extends NSObject {
     private _onReceiveCallback: (notification: NSNotification) => void;
@@ -132,16 +142,26 @@ class IOSApplication implements IOSApplicationDefinition {
         // TODO: Expose Window module so that it can we styled from XML & CSS
         this._window.backgroundColor = utils.ios.getter(UIColor, UIColor.whiteColor);
 
+        this.notifyAppStarted(notification);
+
+    }
+
+    public notifyAppStarted(notification?: NSNotification) {
         const args: LaunchEventData = {
             eventName: launchEvent,
             object: this,
-            ios: notification.userInfo && notification.userInfo.objectForKey("UIApplicationLaunchOptionsLocalNotificationKey") || null
+            ios: notification && notification.userInfo && notification.userInfo.objectForKey("UIApplicationLaunchOptionsLocalNotificationKey") || null
         };
 
         notify(args);
         notify(<LoadAppCSSEventData>{ eventName: "loadAppCss", object: <any>this, cssFile: getCssFileName() });
 
-        this.setWindowContent(args.root);
+        // this._window will be undefined when NS app is embedded in a native one
+        if (this._window) {
+            this.setWindowContent(args.root);
+        } else {
+            this._window = UIApplication.sharedApplication.delegate.window;
+        }   
     }
 
     @profile
@@ -217,10 +237,10 @@ class IOSApplication implements IOSApplicationDefinition {
             // if we already have a root view, we reset it.
             this._rootView._onRootViewReset();
         }
-
         const rootView = createRootView(view);
-        this._rootView = rootView;
         const controller = getViewController(rootView);
+
+        this._rootView = rootView;
 
         if (createRootFrame.value) {
             // Don't setup as styleScopeHost
@@ -229,13 +249,14 @@ class IOSApplication implements IOSApplicationDefinition {
             // setup view as styleScopeHost
             rootView._setupAsRootView({});
         }
-
+        setViewControllerView(rootView);
         const haveController = this._window.rootViewController !== null;
         this._window.rootViewController = controller;
         if (!haveController) {
             this._window.makeKeyAndVisible();
         }
     }
+
 }
 
 const iosApp = new IOSApplication();
@@ -284,7 +305,7 @@ export function start(entry?: string | NavigationEntry) {
     started = true;
 
     if (!iosApp.nativeApp) {
-        // Normal NativeScript app will need UIApplicationMain. 
+        // Normal NativeScript app will need UIApplicationMain.
         UIApplicationMain(0, null, null, iosApp && iosApp.delegate ? NSStringFromClass(<any>iosApp.delegate) : NSStringFromClass(Responder));
     } else {
         // TODO: this rootView should be held alive until rootController dismissViewController is called.
@@ -297,7 +318,14 @@ export function start(entry?: string | NavigationEntry) {
                 if (rootController) {
                     const controller = getViewController(rootView);
                     rootView._setupAsRootView({});
-                    rootController.presentViewControllerAnimatedCompletion(controller, true, null);
+                    let embedderDelegate = NativeScriptEmbedder.sharedInstance().delegate;
+                    if (embedderDelegate) {
+                        embedderDelegate.presentNativeScriptApp(controller);
+                    } else {
+                        let visibleVC = utils.ios.getVisibleViewController(rootController);
+                        visibleVC.presentViewControllerAnimatedCompletion(controller, true, null);
+                    }
+                    iosApp.notifyAppStarted();
                 }
             }
         }
@@ -324,22 +352,31 @@ function getViewController(view: View): UIViewController {
     if (viewController instanceof UIViewController) {
         return viewController;
     } else {
-        const nativeView = view.ios || view.nativeViewProtected;
-        if (nativeView instanceof UIView) {
-            viewController = iosView.UILayoutViewController.initWithOwner(new WeakRef(view)) as UIViewController;
-            viewController.view.addSubview(nativeView);
-            view.viewController = viewController;
-            return viewController;
-        }
+        // We set UILayoutViewController dynamically to the root view if it doesn't have a view controller
+        // At the moment the root view doesn't have its native view created. We set it in the setViewControllerView func
+        viewController = iosView.UILayoutViewController.initWithOwner(new WeakRef(view)) as UIViewController;
+        view.viewController = viewController;
+        return viewController;
     }
-
-    throw new Error("Root should be either UIViewController or UIView");
 }
 
-global.__onLiveSync = function () {
+function setViewControllerView(view: View): void {
+    const viewController: UIViewController = view.viewController || view.ios;
+    const nativeView = view.ios || view.nativeViewProtected;
+
+    if (!nativeView || !viewController) {
+        throw new Error("Root should be either UIViewController or UIView");
+    }
+
+    if (viewController instanceof iosView.UILayoutViewController) {
+        viewController.view.addSubview(nativeView);
+    }
+}
+
+global.__onLiveSync = function __onLiveSync(context?: HmrContext) {
     if (!started) {
         return;
     }
 
-    livesync();
+    livesync(context);
 }

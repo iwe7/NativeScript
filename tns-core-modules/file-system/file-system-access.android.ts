@@ -18,6 +18,11 @@ export class FileSystemAccess {
         return new Date(javaFile.lastModified());
     }
 
+    public getFileSize(path: string): number {
+        const javaFile = new java.io.File(path);
+        return javaFile.length();
+    }
+
     public getParent(path: string, onError?: (error: any) => any): { path: string; name: string } {
         try {
             var javaFile = new java.io.File(path);
@@ -311,7 +316,7 @@ export class FileSystemAccess {
     private deleteFolderContent(file: java.io.File): boolean {
         var filesList = file.listFiles();
         if (filesList.length === 0) {
-            return true;// Nothing to delete, so success!
+            return true; // Nothing to delete, so success!
         }
 
         var i,

@@ -53,7 +53,7 @@ try {
     if (appConfig && appConfig.cssParser === "nativescript") {
         parser = "nativescript";
     }
-} catch(e) {
+} catch (e) {
     //
 }
 
@@ -73,21 +73,14 @@ const pattern: RegExp = /('|")(.*?)\1/;
 
 class CSSSource {
     private _selectors: RuleSet[] = [];
-    private static cssFilesCache: { [path: string]: CSSSource } = {};
 
     private constructor(private _ast: SyntaxTree, private _url: string, private _file: string, private _keyframes: KeyframesMap, private _source: string) {
         this.parse();
     }
 
     public static fromURI(uri: string, keyframes: KeyframesMap): CSSSource {
-        // webpack modules require all file paths to be relative to /app folder.
-        let appRelativeUri = uri;
-        if (appRelativeUri.startsWith("/")) {
-            var app = knownFolders.currentApp().path + "/";
-            if (appRelativeUri.startsWith(app)) {
-                appRelativeUri = "./" + appRelativeUri.substr(app.length);
-            }
-        }
+        // webpack modules require all file paths to be relative to /app folder
+        let appRelativeUri = CSSSource.pathRelativeToApp(uri);
 
         try {
             const cssOrAst = global.loadModule(appRelativeUri);
@@ -103,11 +96,26 @@ class CSSSource {
                     return CSSSource.fromSource(cssOrAst.toString(), keyframes, appRelativeUri);
                 }
             }
-        } catch(e) {
+        } catch (e) {
             //
         }
 
         return CSSSource.fromFile(appRelativeUri, keyframes);
+    }
+
+    private static pathRelativeToApp(uri: string): string {
+        if (!uri.startsWith("/")) {
+            return uri;
+        }
+
+        const appPath = knownFolders.currentApp().path;
+        if (!uri.startsWith(appPath)) {
+            traceWrite(`${uri} does not start with ${appPath}`, traceCategories.Error, traceMessageType.error);
+            return uri;
+        }
+
+        const relativeUri = `.${uri.substr(appPath.length)}`;
+        return relativeUri;
     }
 
     public static fromFile(url: string, keyframes: KeyframesMap): CSSSource {
@@ -124,10 +132,15 @@ class CSSSource {
         return new CSSSource(undefined, url, file, keyframes, undefined);
     }
 
+    public static fromFileImport(url: string, keyframes: KeyframesMap, importSource: string): CSSSource {
+        const file = CSSSource.resolveCSSPathFromURL(url, importSource);
+        return new CSSSource(undefined, url, file, keyframes, undefined);
+    }
+
     @profile
-    public static resolveCSSPathFromURL(url: string): string {
+    public static resolveCSSPathFromURL(url: string, importSource?: string): string {
         const app = knownFolders.currentApp().path;
-        const file = resolveFileNameFromUrl(url, app, File.exists);
+        const file = resolveFileNameFromUrl(url, app, File.exists, importSource);
         return file;
     }
 
@@ -173,7 +186,7 @@ class CSSSource {
     @profile
     private parseCSSAst() {
         if (this._source) {
-            switch(parser) {
+            switch (parser) {
                 case "nativescript":
                     const cssparser = new CSS3Parser(this._source);
                     const stylesheet = cssparser.parseAStylesheet();
@@ -198,21 +211,33 @@ class CSSSource {
     }
 
     private createSelectorsFromImports(): RuleSet[] {
-        let selectors: RuleSet[] = [];
         const imports = this._ast["stylesheet"]["rules"].filter(r => r.type === "import");
-        for (let i = 0; i < imports.length; i++) {
-            const importItem = imports[i]["import"];
 
-            const match = importItem && (<string>importItem).match(pattern);
-            const url = match && match[2];
+        const urlFromImportObject = importObject => {
+            const importItem = importObject["import"] as string;
+            const urlMatch = importItem && importItem.match(pattern);
+            return urlMatch && urlMatch[2];
+        };
 
-            if (url !== null && url !== undefined) {
-                const cssFile = CSSSource.fromURI(url, this._keyframes);
-                selectors = selectors.concat(cssFile.selectors);
-            }
-        }
+        const sourceFromImportObject = importObject =>
+            importObject["position"] && importObject["position"]["source"];
 
-        return selectors;
+        const toUrlSourcePair = importObject => ({
+            url: urlFromImportObject(importObject),
+            source: sourceFromImportObject(importObject),
+        });
+
+        const getCssFile = ({ url, source }) => source ?
+            CSSSource.fromFileImport(url, this._keyframes, source) :
+            CSSSource.fromURI(url, this._keyframes);
+
+        const cssFiles = imports
+            .map(toUrlSourcePair)
+            .filter(({ url }) => !!url)
+            .map(getCssFile);
+
+        const selectors = cssFiles.map(file => (file && file.selectors) || []);
+        return selectors.reduce((acc, val) => acc.concat(val), []);
     }
 
     private createSelectorsFromSyntaxTree(): RuleSet[] {
@@ -237,7 +262,36 @@ class CSSSource {
     }
 }
 
-const onCssChanged = profile('"style-scope".onCssChanged', (args: applicationCommon.CssChangedEventData) => {
+export function removeTaggedAdditionalCSS(tag: String | Number): Boolean {
+    let changed = false;
+    for (let i = 0; i < applicationAdditionalSelectors.length; i++) {
+        if (applicationAdditionalSelectors[i].tag === tag) {
+            applicationAdditionalSelectors.splice(i, 1);
+            i--;
+            changed = true;
+        }
+    }
+    if (changed) { mergeCssSelectors(); }
+    return changed;
+}
+
+export function addTaggedAdditionalCSS(cssText: string, tag?: string | Number): Boolean {
+    const parsed: RuleSet[] = CSSSource.fromSource(cssText, applicationKeyframes, undefined).selectors;
+    let changed = false;
+    if (parsed && parsed.length) {
+        changed = true;
+        if (tag != null) {
+            for (let i = 0; i < parsed.length; i++) {
+                parsed[i].tag = tag;
+            }
+        }
+        applicationAdditionalSelectors.push.apply(applicationAdditionalSelectors, parsed);
+        mergeCssSelectors();
+    }
+    return changed;
+}
+
+const onCssChanged = profile("\"style-scope\".onCssChanged", (args: applicationCommon.CssChangedEventData) => {
     if (args.cssText) {
         const parsed = CSSSource.fromSource(args.cssText, applicationKeyframes, args.cssFile).selectors;
         if (parsed) {
@@ -268,7 +322,7 @@ const loadCss = profile(`"style-scope".loadCss`, (cssFile: string) => {
 applicationCommon.on("cssChanged", onCssChanged);
 applicationCommon.on("livesync", onLiveSync);
 
-export const loadAppCSS = profile('"style-scope".loadAppCSS', (args: applicationCommon.LoadAppCSSEventData) => {
+export const loadAppCSS = profile("\"style-scope\".loadAppCSS", (args: applicationCommon.LoadAppCSSEventData) => {
     loadCss(args.cssFile);
     applicationCommon.off("loadAppCss", loadAppCSS);
 });
@@ -289,6 +343,7 @@ export class CssState {
     _appliedChangeMap: Readonly<ChangeMap<ViewBase>>;
     _appliedPropertyValues: Readonly<{}>;
     _appliedAnimations: ReadonlyArray<kam.KeyframeAnimation>;
+    _appliedSelectorsVersion: number;
 
     _match: SelectorsMatch<ViewBase>;
     _matchInvalid: boolean;
@@ -303,7 +358,7 @@ export class CssState {
      * As a result, at some point in time, the selectors matched have to be requerried from the style scope and applied to the view.
      */
     public onChange(): void {
-        if (this.view.isLoaded) {
+        if (this.view && this.view.isLoaded) {
             this.unsubscribeFromDynamicUpdates();
             this.updateMatch();
             this.subscribeForDynamicUpdates();
@@ -311,6 +366,10 @@ export class CssState {
         } else {
             this._matchInvalid = true;
         }
+    }
+
+    public isSelectorsLatestVersionApplied(): boolean {
+        return this.view._styleScope._getSelectorsVersion() === this._appliedSelectorsVersion;
     }
 
     public onLoaded(): void {
@@ -327,7 +386,12 @@ export class CssState {
 
     @profile
     private updateMatch() {
-        this._match = this.view._styleScope ? this.view._styleScope.matchSelectors(this.view) : CssState.emptyMatch;
+        if (this.view._styleScope) {
+            this._appliedSelectorsVersion = this.view._styleScope._getSelectorsVersion();
+            this._match = this.view._styleScope.matchSelectors(this.view);
+        } else {
+            this._match = CssState.emptyMatch;
+        }
         this._matchInvalid = false;
     }
 
@@ -389,7 +453,7 @@ export class CssState {
      * Calculate the difference between the previously applied property values,
      * and the new set of property values that have to be applied for the provided selectors.
      * Apply the values and ensure each property setter is called at most once to avoid excessive change notifications.
-     * @param matchingSelectors 
+     * @param matchingSelectors
      */
     private setPropertyValues(matchingSelectors: SelectorCore[]): void {
         const newPropertyValues = new this.view.style.PropertyBag();
@@ -399,7 +463,7 @@ export class CssState {
         Object.freeze(newPropertyValues);
 
         const oldProperties = this._appliedPropertyValues;
-        for(const key in oldProperties) {
+        for (const key in oldProperties) {
             if (!(key in newPropertyValues)) {
                 if (key in this.view.style) {
                     this.view.style[`css:${key}`] = unsetValue;
@@ -408,7 +472,7 @@ export class CssState {
                 }
             }
         }
-        for(const property in newPropertyValues) {
+        for (const property in newPropertyValues) {
             if (oldProperties && property in oldProperties && oldProperties[property] === newPropertyValues[property]) {
                 continue;
             }
@@ -452,7 +516,7 @@ export class CssState {
         this._appliedChangeMap.forEach((changes, view) => {
             if (changes.attributes) {
                 changes.attributes.forEach(attribute => {
-                    view.removeEventListener("onPropertyChanged:" + attribute, this._onDynamicStateChangeHandler);
+                    view.removeEventListener(attribute + "Change", this._onDynamicStateChangeHandler);
                 });
             }
             if (changes.pseudoClasses) {
@@ -480,13 +544,7 @@ CssState.prototype._matchInvalid = true;
 export class StyleScope {
 
     private _selectors: SelectorsMap;
-
-    // caches all the visual states by the key of the visual state selectors
-    private _statesByKey = {};
-    private _viewIdToKey = {};
-
     private _css: string = "";
-    private _cssFileName: string;
     private _mergedCssSelectors: RuleSet[];
     private _localCssSelectors: RuleSet[] = [];
     private _localCssSelectorVersion: number = 0;
@@ -499,7 +557,6 @@ export class StyleScope {
     }
 
     set css(value: string) {
-        this._cssFileName = undefined;
         this.setCss(value);
     }
 
@@ -514,7 +571,6 @@ export class StyleScope {
     @profile
     private setCss(cssString: string, cssFileName?): void {
         this._css = cssString;
-        this._reset();
 
         const cssFile = CSSSource.fromSource(cssString, this._keyframes, cssFileName);
         this._localCssSelectors = cssFile.selectors;
@@ -528,16 +584,15 @@ export class StyleScope {
             return;
         }
 
-        this._reset();
         let parsedCssSelectors = cssString ? CSSSource.fromSource(cssString, this._keyframes, cssFileName) : CSSSource.fromURI(cssFileName, this._keyframes);
         this._css = this._css + parsedCssSelectors.source;
-        this._localCssSelectors.push.apply(this._localCssSelectors, parsedCssSelectors.selectors); 
+        this._localCssSelectors.push.apply(this._localCssSelectors, parsedCssSelectors.selectors);
         this._localCssSelectorVersion++;
         this.ensureSelectors();
     }
 
     public getKeyframeAnimationWithName(animationName: string): kam.KeyframeAnimationInfo {
-        const cssKeyframes  = this._keyframes[animationName];
+        const cssKeyframes = this._keyframes[animationName];
         if (!cssKeyframes) {
             return;
         }
@@ -552,14 +607,22 @@ export class StyleScope {
     }
 
     public ensureSelectors(): number {
-        if (this._applicationCssSelectorsAppliedVersion !== applicationCssSelectorVersion ||
-            this._localCssSelectorVersion !== this._localCssSelectorsAppliedVersion ||
+        if (!this.isApplicationCssSelectorsLatestVersionApplied() ||
+            !this.isLocalCssSelectorsLatestVersionApplied() ||
             !this._mergedCssSelectors) {
 
             this._createSelectors();
         }
 
         return this._getSelectorsVersion();
+    }
+
+    public isApplicationCssSelectorsLatestVersionApplied(): boolean {
+        return this._applicationCssSelectorsAppliedVersion === applicationCssSelectorVersion;
+    }
+
+    public isLocalCssSelectorsLatestVersionApplied(): boolean {
+        return this._localCssSelectorsAppliedVersion === this._localCssSelectorVersion;
     }
 
     @profile
@@ -589,11 +652,6 @@ export class StyleScope {
     public query(node: Node): SelectorCore[] {
         this.ensureSelectors();
         return this._selectors.query(node).selectors;
-    }
-
-    private _reset() {
-        this._statesByKey = {};
-        this._viewIdToKey = {};
     }
 
     private _getSelectorsVersion() {
@@ -626,9 +684,9 @@ export class StyleScope {
 
 type KeyframesMap = Map<string, Keyframes>;
 
-export function resolveFileNameFromUrl(url: string, appDirectory: string, fileExists: (name: string) => boolean): string {
-    let fileName: string = typeof url === "string" ? url.trim() : "";
+export function resolveFileNameFromUrl(url: string, appDirectory: string, fileExists: (name: string) => boolean, importSource?: string): string {
 
+    let fileName: string = typeof url === "string" ? url.trim() : "";
     if (fileName.indexOf("~/") === 0) {
         fileName = fileName.replace("~/", "");
     }
@@ -643,6 +701,14 @@ export function resolveFileNameFromUrl(url: string, appDirectory: string, fileEx
         if (fileName[0] === "~" && fileName[1] !== "/" && fileName[1] !== "\"") {
             fileName = fileName.substr(1);
         }
+
+        if (importSource) {
+            const importFile = resolveFilePathFromImport(importSource, fileName);
+            if (fileExists(importFile)) {
+                return importFile;
+            }
+        }
+
         const external = path.join(appDirectory, "tns_modules", fileName);
         if (fileExists(external)) {
             return external;
@@ -650,6 +716,19 @@ export function resolveFileNameFromUrl(url: string, appDirectory: string, fileEx
     }
 
     return null;
+}
+
+function resolveFilePathFromImport(importSource: string, fileName: string): string {
+    const importSourceParts = importSource.split(path.separator);
+    const fileNameParts = fileName.split(path.separator)
+        // exclude the dot-segment for current directory
+        .filter(p => !isCurrentDirectory(p));
+
+    // remove current file name
+    importSourceParts.pop();
+    // remove element in case of dot-segment for parent directory or add file name
+    fileNameParts.forEach(p => isParentDirectory(p) ? importSourceParts.pop() : importSourceParts.push(p));
+    return importSourceParts.join(path.separator);
 }
 
 export const applyInlineStyle = profile(function applyInlineStyle(view: ViewBase, styleStr: string) {
@@ -672,18 +751,26 @@ export const applyInlineStyle = profile(function applyInlineStyle(view: ViewBase
     });
 });
 
+function isCurrentDirectory(uriPart: string): boolean {
+    return uriPart === ".";
+}
+
+function isParentDirectory(uriPart: string): boolean {
+    return uriPart === "..";
+}
+
 function isKeyframe(node: CssNode): node is KeyframesDefinition {
     return node.type === "keyframes";
 }
 
-class InlineSelector implements SelectorCore {
-    constructor(ruleSet: RuleSet) {
-        this.ruleset = ruleSet;
-    }
+// class InlineSelector implements SelectorCore {
+//     constructor(ruleSet: RuleSet) {
+//         this.ruleset = ruleSet;
+//     }
 
-    public specificity = 0x01000000;
-    public rarity = 0;
-    public dynamic: boolean = false;
-    public ruleset: RuleSet;
-    public match(node: Node): boolean { return true; }
-}
+//     public specificity = 0x01000000;
+//     public rarity = 0;
+//     public dynamic: boolean = false;
+//     public ruleset: RuleSet;
+//     public match(node: Node): boolean { return true; }
+// }

@@ -3,13 +3,15 @@
  */ /** */
 
 ///<reference path="../../../tns-core-modules.d.ts" /> Include global typings
-import { ViewBase, Property, EventData, Color } from "../view-base";
+import { ViewBase, Property, InheritedProperty, EventData, Color } from "../view-base";
 import { Animation, AnimationDefinition, AnimationPromise } from "../../animation";
 import { HorizontalAlignment, VerticalAlignment, Visibility, Length, PercentLength } from "../../styling/style-properties";
 import { GestureTypes, GestureEventData, GesturesObserver } from "../../gestures";
+import { LinearGradient } from "../../styling/gradient";
 
 export * from "../view-base";
 export * from "../../styling/style-properties";
+export { LinearGradient };
 
 export function PseudoClassHandler(...pseudoClasses: string[]): MethodDecorator;
 
@@ -101,6 +103,10 @@ export interface ShownModallyData extends EventData {
  * A View occupies a rectangular area on the screen and is responsible for drawing and layouting of all UI components within. 
  */
 export abstract class View extends ViewBase {
+    /**
+     * String value used when hooking to layoutChanged event.
+     */
+    public static layoutChangedEvent: string;
     /**
      * String value used when hooking to showingModally event.
      */
@@ -219,7 +225,7 @@ export abstract class View extends ViewBase {
     /**
      * Gets or sets the background image of the view.
      */
-    backgroundImage: string;
+    backgroundImage: string | LinearGradient;
 
     /**
      * Gets or sets the minimum width the view may grow to.
@@ -339,6 +345,16 @@ export abstract class View extends ViewBase {
     isUserInteractionEnabled: boolean;
 
     /**
+     * Instruct container view to expand beyond the safe area. This property is iOS specific. Default value: false
+     */
+    iosOverflowSafeArea: boolean;
+
+    /**
+     * Enables or disables the iosOverflowSafeArea property for all children. This property is iOS specific. Default value: true
+     */
+    iosOverflowSafeAreaEnabled: boolean;
+
+    /**
      * Gets is layout is valid. This is a read-only property.
      */
     isLayoutValid: boolean;
@@ -409,7 +425,6 @@ export abstract class View extends ViewBase {
 
     /**
      * Called from onLayout when native view position is about to be changed.
-     * @param parent    This parameter is not used. You can pass null.
      * @param left      Left position, relative to parent
      * @param top       Top position, relative to parent
      * @param right     Right position, relative to parent
@@ -421,7 +436,7 @@ export abstract class View extends ViewBase {
      * Measure a child by taking into account its margins and a given measureSpecs.
      * @param parent            This parameter is not used. You can pass null.
      * @param child             The view to be measured.
-     * @param measuredWidth        The measured width that the parent layout specifies for this view.
+     * @param measuredWidth     The measured width that the parent layout specifies for this view.
      * @param measuredHeight    The measured height that the parent layout specifies for this view.
      */
     public static measureChild(parent: View, child: View, widthMeasureSpec: number, heightMeasureSpec: number): { measuredWidth: number; measuredHeight: number };
@@ -507,39 +522,6 @@ export abstract class View extends ViewBase {
     on(event: "shownModally", callback: (args: ShownModallyData) => void, thisArg?: any);
 
     /**
-    * Shows the View contained in moduleName as a modal view.
-    * @param moduleName - The name of the module to load starting from the application root.
-    * @param context - Any context you want to pass to the modally shown view.
-    * This same context will be available in the arguments of the shownModally event handler.
-    * @param closeCallback - A function that will be called when the view is closed.
-    * Any arguments provided when calling ShownModallyData.closeCallback will be available here.
-    * @param fullscreen - An optional parameter specifying whether to show the modal page in full-screen mode.
-    * @param stretched - An optional parameter specifying whether to stretch the modal page when not in full-screen mode.
-    */
-    showModal(moduleName: string, context: any, closeCallback: Function, fullscreen?: boolean, animated?: boolean, stretched?: boolean): View;
-
-    /**
-     * Shows the view passed as parameter as a modal view.
-     * @param view - View instance to be shown modally.
-     * @param context - Any context you want to pass to the modally shown view. This same context will be available in the arguments of the shownModally event handler.
-     * @param closeCallback - A function that will be called when the view is closed. Any arguments provided when calling ShownModallyData.closeCallback will be available here.
-     * @param fullscreen - An optional parameter specifying whether to show the modal view in full-screen mode.
-     * @param stretched - An optional parameter specifying whether to stretch the modal page when not in full-screen mode.
-     */
-    showModal(view: View, context: any, closeCallback: Function, fullscreen?: boolean, animated?: boolean, stretched?: boolean): View;
-
-    /**
-     * Deprecated. Showing view as modal is deprecated.
-     * Use showModal method with arguments.
-     */
-    showModal(): View;
-
-    /**
-     * Closes the current modal view that this page is showing.
-     */
-    closeModal(): void;
-
-    /**
      * Returns the current modal view that this page is showing (is parent of), if any.
      */
     modal: View;
@@ -553,6 +535,11 @@ export abstract class View extends ViewBase {
      * Creates an Animation object based on the supplied options. 
      */
     public createAnimation(options: AnimationDefinition): Animation;
+
+    /**
+     * Returns the iOS safe area insets of this view.
+     */
+    public getSafeAreaInsets(): { left, top, right, bottom };
 
     /**
      * Returns the location of this view in the window coordinate system.
@@ -603,7 +590,11 @@ export abstract class View extends ViewBase {
     _getNativeViewsCount(): number;
 
     _eachLayoutView(callback: (View) => void): void;
-
+    
+    /**
+     * Iterates over children of type View. 
+     * @param callback Called for each child of type View. Iteration stops if this method returns falsy value.
+     */
     public eachChildView(callback: (view: View) => boolean): void;
 
     //@private
@@ -632,7 +623,7 @@ export abstract class View extends ViewBase {
      * Called by layout method to cache view bounds.
      * @private
      */
-    _setCurrentLayoutBounds(left: number, top: number, right: number, bottom: number): void;
+    _setCurrentLayoutBounds(left: number, top: number, right: number, bottom: number): { boundsChanged: boolean, sizeChanged: boolean };
     /**
      * Return view bounds.
      * @private
@@ -686,7 +677,7 @@ export abstract class View extends ViewBase {
     /**
      * @private
      */
-    _getFragmentManager(): any; /* android.app.FragmentManager */
+    _getFragmentManager(): any; /* android.support.v4.app.FragmentManager */
 
     /**
      * Updates styleScope or create new styleScope.
@@ -724,9 +715,19 @@ export abstract class View extends ViewBase {
 }
 
 /**
+ * Base class for all UI components that are containers. 
+ */
+export class ContainerView extends View {
+    /**
+     * Instruct container view to expand beyond the safe area. This property is iOS specific. Default value: true
+     */
+    public iosOverflowSafeArea: boolean;
+}
+
+/**
  * Base class for all UI components that implement custom layouts. 
  */
-export class CustomLayoutView extends View {
+export class CustomLayoutView extends ContainerView {
     //@private
     /**
      * @private
@@ -800,12 +801,22 @@ export const originXProperty: Property<View, number>;
 export const originYProperty: Property<View, number>;
 export const isEnabledProperty: Property<View, boolean>;
 export const isUserInteractionEnabledProperty: Property<View, boolean>;
+export const iosOverflowSafeAreaProperty: Property<View, boolean>;
+export const iosOverflowSafeAreaEnabledProperty: InheritedProperty<View, boolean>;
 
 export namespace ios {
-    export function isContentScrollable(controller: any /* UIViewController */, owner: View): boolean
+    /**
+     * Returns a view with viewController or undefined if no such found along the view's parent chain.
+     * @param view The view form which to start the search.
+     */
+    export function getParentWithViewController(view: View): View
     export function updateAutoAdjustScrollInsets(controller: any /* UIViewController */, owner: View): void
     export function updateConstraints(controller: any /* UIViewController */, owner: View): void;
     export function layoutView(controller: any /* UIViewController */, owner: View): void;
+    export function getPositionFromFrame(frame: any /* CGRect */): { left, top, right, bottom };
+    export function getFrameFromPosition(position: { left, top, right, bottom }, insets?: { left, top, right, bottom }): any /* CGRect */;
+    export function shrinkToSafeArea(view: View, frame: any /* CGRect */): any /* CGRect */;
+    export function expandBeyondSafeArea(view: View, frame: any /* CGRect */): any /* CGRect */;
     export class UILayoutViewController {
         public static initWithOwner(owner: WeakRef<View>): UILayoutViewController;
     }

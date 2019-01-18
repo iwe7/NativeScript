@@ -1,7 +1,8 @@
-﻿import { TabView as TabViewDefinition, TabViewItem as TabViewItemDefinition, SelectedIndexChangedEventData, TabViewItem } from ".";
+﻿import { TabView as TabViewDefinition, TabViewItem as TabViewItemDefinition, SelectedIndexChangedEventData } from ".";
 import {
     View, ViewBase, Style, Property, CssProperty, CoercibleProperty,
-    Color, isIOS, AddArrayFromBuilder, AddChildFromBuilder, EventData, CSSType
+    Color, isIOS, AddArrayFromBuilder, AddChildFromBuilder, EventData, CSSType,
+    traceWrite, traceCategories, traceMessageType, booleanConverter
 } from "../core/view";
 
 export * from "../core/view";
@@ -94,6 +95,7 @@ export class TabViewBase extends View implements TabViewDefinition, AddChildFrom
     public selectedIndex: number;
     public androidOffscreenTabLimit: number;
     public androidTabsPosition: "top" | "bottom";
+    public androidSwipeEnabled: boolean;
     public iosIconRenderingMode: "automatic" | "alwaysOriginal" | "alwaysTemplate";
 
     get androidSelectedTabHighlightColor(): Color {
@@ -101,6 +103,13 @@ export class TabViewBase extends View implements TabViewDefinition, AddChildFrom
     }
     set androidSelectedTabHighlightColor(value: Color) {
         this.style.androidSelectedTabHighlightColor = value;
+    }
+
+    get tabTextFontSize(): number {
+        return this.style.tabTextFontSize;
+    }
+    set tabTextFontSize(value: number) {
+        this.style.tabTextFontSize = value;
     }
 
     get tabTextColor(): Color {
@@ -196,6 +205,10 @@ export interface TabViewBase {
     on(event: "selectedIndexChanged", callback: (args: SelectedIndexChangedEventData) => void, thisArg?: any);
 }
 
+export function traceMissingIcon(icon: string) {
+    traceWrite("Could not load tab bar icon: " + icon, traceCategories.Error, traceMessageType.error);
+}
+
 export const selectedIndexProperty = new CoercibleProperty<TabViewBase, number>({
     name: "selectedIndex", defaultValue: -1, affectsLayout: isIOS,
     valueChanged: (target, oldValue, newValue) => {
@@ -239,6 +252,12 @@ androidOffscreenTabLimitProperty.register(TabViewBase);
 
 export const androidTabsPositionProperty = new Property<TabViewBase, "top" | "bottom">({ name: "androidTabsPosition", defaultValue: "top" });
 androidTabsPositionProperty.register(TabViewBase);
+
+export const androidSwipeEnabledProperty = new Property<TabViewBase, boolean>({ name: "androidSwipeEnabled", defaultValue: true, valueConverter: booleanConverter });
+androidSwipeEnabledProperty.register(TabViewBase);
+
+export const tabTextFontSizeProperty = new CssProperty<Style, number>({ name: "tabTextFontSize", cssName: "tab-text-font-size", valueConverter: (v) => parseFloat(v) });
+tabTextFontSizeProperty.register(Style);
 
 export const tabTextColorProperty = new CssProperty<Style, Color>({ name: "tabTextColor", cssName: "tab-text-color", equalityComparer: Color.equals, valueConverter: (v) => new Color(v) });
 tabTextColorProperty.register(Style);

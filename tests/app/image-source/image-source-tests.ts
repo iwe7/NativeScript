@@ -79,7 +79,7 @@ export function testFromFile() {
 }
 
 export function testFromAssetFileNotFound(done) {
-    let asset = new imageAssetModule.ImageAsset('invalidFile.png');
+    let asset = new imageAssetModule.ImageAsset("invalidFile.png");
     asset.options = {
         width: 0,
         height: 0,
@@ -87,7 +87,7 @@ export function testFromAssetFileNotFound(done) {
     };
 
     let img = imageSource.fromAsset(asset).then((source) => {
-        done('Should not resolve with invalid file name.');
+        done("Should not resolve with invalid file name.");
     }, (error) => {
         TKUnit.assertNotNull(error);
         done();
@@ -111,20 +111,37 @@ export function testFromAssetSimple(done) {
     });
 }
 
-export function testFromAssetWithScaling(done) {
+export function testFromAssetWithExactScaling(done) {
     let asset = new imageAssetModule.ImageAsset(splashscreenPath);
     let scaleWidth = 10;
     let scaleHeight = 11;
     asset.options = {
         width: scaleWidth,
         height: scaleHeight,
-        keepAspectRatio: false
+        keepAspectRatio: false,
+        autoScaleFactor: false
     };
 
-    let img = imageSource.fromAsset(asset).then((source) => {
+    imageSource.fromAsset(asset).then((source) => {
         TKUnit.assertEqual(source.width, scaleWidth);
         TKUnit.assertEqual(source.height, scaleHeight);
-        done();
+
+        const targetFilename = `splashscreenTemp.png`;
+        const tempPath = fs.knownFolders.temp().path;
+        const localFullPath = fs.path.join(tempPath, targetFilename);
+
+        const fullImageSaved = source.saveToFile(localFullPath, "png");
+
+        if (fullImageSaved) {
+            let sourceImage = new imageSource.ImageSource();
+            sourceImage.fromFile(localFullPath).then(() => {
+                TKUnit.assertEqual(sourceImage.width, scaleWidth);
+                TKUnit.assertEqual(sourceImage.height, scaleHeight);
+                done();
+            });
+        } else {
+            done(`Error saving photo to local temp folder: ${localFullPath}`);
+        }
     }, (error) => {
         done(error);
     });

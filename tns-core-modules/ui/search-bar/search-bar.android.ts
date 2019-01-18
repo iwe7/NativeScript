@@ -1,7 +1,8 @@
 ﻿import { Font } from "../styling/font";
 import {
     SearchBarBase, Color, colorProperty, backgroundColorProperty, backgroundInternalProperty, fontInternalProperty,
-    textProperty, hintProperty, textFieldHintColorProperty, textFieldBackgroundColorProperty, fontSizeProperty
+    textProperty, hintProperty, textFieldHintColorProperty, textFieldBackgroundColorProperty, fontSizeProperty,
+    isEnabledProperty, isUserInteractionEnabledProperty
 } from "./search-bar-common";
 import { ad } from "../../utils/utils";
 
@@ -76,6 +77,33 @@ function initializeNativeClasses(): void {
     CloseListener = CompatCloseListenerImpl;
 }
 
+function enableSearchView(nativeView: any, value: boolean) {
+    nativeView.setEnabled(value);
+
+    if (!(nativeView instanceof android.view.ViewGroup)) {
+        return;
+    }
+
+    for (let i = 0; i < nativeView.getChildCount(); i++) {
+        let child = nativeView.getChildAt(i);
+        enableSearchView(child, value);
+    }
+}
+
+function enableUserInteractionSearchView(nativeView: any, value: boolean) {
+    nativeView.setClickable(value);
+    nativeView.setFocusable(value);
+
+    if (!(nativeView instanceof android.view.ViewGroup)) {
+        return;
+    }
+    
+    for (let i = 0; i < nativeView.getChildCount(); i++) {
+        let child = nativeView.getChildAt(i);
+        enableUserInteractionSearchView(child, value);
+    }
+}
+
 export class SearchBar extends SearchBarBase {
     nativeViewProtected: android.support.v7.widget.SearchView;
     private _searchTextView: android.widget.TextView;
@@ -95,10 +123,15 @@ export class SearchBar extends SearchBarBase {
     }
 
     public createNativeView() {
-        initializeNativeClasses();
         const nativeView = new android.support.v7.widget.SearchView(this._context)
         nativeView.setIconified(false);
+        return nativeView;
+    }
 
+    public initNativeView(): void {
+        super.initNativeView();
+        const nativeView = this.nativeViewProtected;
+        initializeNativeClasses();
         const queryTextListener = new QueryTextListener(this);
         nativeView.setOnQueryTextListener(queryTextListener);
         (<any>nativeView).queryTextListener = queryTextListener;
@@ -106,15 +139,6 @@ export class SearchBar extends SearchBarBase {
         const closeListener = new CloseListener(this);
         nativeView.setOnCloseListener(closeListener);
         (<any>nativeView).closeListener = closeListener;
-
-        return nativeView;
-    }
-
-    public initNativeView(): void {
-        super.initNativeView();
-        const nativeView: any = this.nativeViewProtected;
-        nativeView.closeListener.owner = this;
-        nativeView.queryTextListener.owner = this;
     }
 
     public disposeNativeView() {
@@ -124,6 +148,14 @@ export class SearchBar extends SearchBarBase {
         this._searchPlate = null;
         this._searchTextView = null;
         super.disposeNativeView();
+    }
+
+    [isEnabledProperty.setNative](value: boolean) {
+        enableSearchView(this.nativeViewProtected, value);
+    }
+
+    [isUserInteractionEnabledProperty.setNative](value: boolean) {
+        enableUserInteractionSearchView(this.nativeViewProtected, value);
     }
 
     [backgroundColorProperty.getDefault](): number {
@@ -183,7 +215,7 @@ export class SearchBar extends SearchBarBase {
         return "";
     }
     [textProperty.setNative](value: string) {
-        const text = (value === null || value === undefined) ? '' : value.toString();
+        const text = (value === null || value === undefined) ? "" : value.toString();
         this.nativeViewProtected.setQuery(text, false);
     }
     [hintProperty.getDefault](): string {
@@ -205,7 +237,7 @@ export class SearchBar extends SearchBarBase {
         if (value instanceof Color) {
             textView.setBackgroundColor(value.android);
         } else {
-            org.nativescript.widgets.ViewHelper.setBackground(textView, value);
+            textView.setBackground(value);
         }
     }
     [textFieldHintColorProperty.getDefault](): number {

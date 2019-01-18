@@ -1,18 +1,13 @@
 ﻿/**
  * iOS specific dialogs functions implementation.
  */
-
+import { ios as iosView } from "../core/view";
 import { ConfirmOptions, PromptOptions, PromptResult, LoginOptions, LoginResult, ActionOptions } from ".";
-import { getCurrentPage, getLabelColor, getButtonColors, getTextFieldColor, isDialogOptions, inputType, ALERT, OK, CONFIRM, CANCEL, PROMPT, LOGIN } from "./dialogs-common";
+import { getCurrentPage, getLabelColor, getButtonColors, getTextFieldColor, isDialogOptions, inputType, capitalizationType, ALERT, OK, CONFIRM, CANCEL, PROMPT, parseLoginOptions } from "./dialogs-common";
 import { isString, isDefined, isFunction } from "../../utils/types";
+import { getRootView } from "../../application";
 
 export * from "./dialogs-common";
-
-enum allertButtons {
-    cancel = 1 << 0,
-    neutral = 1 << 1,
-    ok = 1 << 2,
-}
 
 function addButtonsToAlertController(alertController: UIAlertController, options: ConfirmOptions, callback?: Function): void {
     if (!options) {
@@ -20,19 +15,19 @@ function addButtonsToAlertController(alertController: UIAlertController, options
     }
 
     if (isString(options.cancelButtonText)) {
-        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.cancelButtonText, UIAlertActionStyle.Default, (arg: UIAlertAction) => {
+        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.cancelButtonText, UIAlertActionStyle.Default, () => {
             raiseCallback(callback, false);
         }));
     }
 
     if (isString(options.neutralButtonText)) {
-        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.neutralButtonText, UIAlertActionStyle.Default, (arg: UIAlertAction) => {
+        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.neutralButtonText, UIAlertActionStyle.Default, () => {
             raiseCallback(callback, undefined);
         }));
     }
 
     if (isString(options.okButtonText)) {
-        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.okButtonText, UIAlertActionStyle.Default, (arg: UIAlertAction) => {
+        alertController.addAction(UIAlertAction.actionWithTitleStyleHandler(options.okButtonText, UIAlertActionStyle.Default, () => {
             raiseCallback(callback, true);
         }));
     }
@@ -48,7 +43,7 @@ export function alert(arg: any): Promise<void> {
         try {
             let options = !isDialogOptions(arg) ? { title: ALERT, okButtonText: OK, message: arg + "" } : arg;
             let alertController = UIAlertController.alertControllerWithTitleMessagePreferredStyle(options.title, options.message, UIAlertControllerStyle.Alert);
-            
+
             addButtonsToAlertController(alertController, options, () => { resolve(); });
 
             showUIAlertController(alertController);
@@ -109,6 +104,10 @@ export function prompt(arg: any): Promise<PromptResult> {
 
                 if (options && options.inputType === inputType.email) {
                     arg.keyboardType = UIKeyboardType.EmailAddress;
+                } else if (options && options.inputType === inputType.number) {
+                    arg.keyboardType = UIKeyboardType.NumberPad;
+                } else if (options && options.inputType === inputType.phone) {
+                    arg.keyboardType = UIKeyboardType.PhonePad;
                 }
 
                 let color = getTextFieldColor();
@@ -118,6 +117,23 @@ export function prompt(arg: any): Promise<PromptResult> {
             });
 
             textField = alertController.textFields.firstObject;
+
+            if (options) {
+                switch (options.capitalizationType) {
+                    case capitalizationType.all: {
+                        textField.autocapitalizationType = UITextAutocapitalizationType.AllCharacters; break;
+                    }
+                    case capitalizationType.sentences: {
+                        textField.autocapitalizationType = UITextAutocapitalizationType.Sentences; break;
+                    }
+                    case capitalizationType.words: {
+                        textField.autocapitalizationType = UITextAutocapitalizationType.Words; break;
+                    }
+                    default: {
+                        textField.autocapitalizationType = UITextAutocapitalizationType.None;
+                    }
+                }
+            }
 
             addButtonsToAlertController(alertController, options,
                 (r) => { resolve({ result: r, text: textField.text }); });
@@ -129,32 +145,8 @@ export function prompt(arg: any): Promise<PromptResult> {
     });
 }
 
-export function login(arg: any): Promise<LoginResult> {
-    let options: LoginOptions;
-
-    let defaultOptions = { title: LOGIN, okButtonText: OK, cancelButtonText: CANCEL };
-
-    if (arguments.length === 1) {
-        if (isString(arguments[0])) {
-            options = defaultOptions;
-            options.message = arguments[0];
-        } else {
-            options = arguments[0];
-        }
-    } else if (arguments.length === 2) {
-        if (isString(arguments[0]) && isString(arguments[1])) {
-            options = defaultOptions;
-            options.message = arguments[0];
-            options.userName = arguments[1];
-        }
-    } else if (arguments.length === 3) {
-        if (isString(arguments[0]) && isString(arguments[1]) && isString(arguments[2])) {
-            options = defaultOptions;
-            options.message = arguments[0];
-            options.userName = arguments[1];
-            options.password = arguments[2];
-        }
-    }
+export function login(...args: any[]): Promise<LoginResult> {
+    let options: LoginOptions = parseLoginOptions(args);
 
     return new Promise<LoginResult>((resolve, reject) => {
         try {
@@ -163,9 +155,10 @@ export function login(arg: any): Promise<LoginResult> {
             let alertController = UIAlertController.alertControllerWithTitleMessagePreferredStyle(options.title, options.message, UIAlertControllerStyle.Alert);
 
             let textFieldColor = getTextFieldColor();
-            
+
             alertController.addTextFieldWithConfigurationHandler((arg: UITextField) => {
                 arg.placeholder = "Login";
+                arg.placeholder = options.userNameHint ? options.userNameHint : "";
                 arg.text = isString(options.userName) ? options.userName : "";
 
                 if (textFieldColor) {
@@ -176,6 +169,7 @@ export function login(arg: any): Promise<LoginResult> {
             alertController.addTextFieldWithConfigurationHandler((arg: UITextField) => {
                 arg.placeholder = "Password";
                 arg.secureTextEntry = true;
+                arg.placeholder = options.passwordHint ? options.passwordHint : "";
                 arg.text = isString(options.password) ? options.password : "";
 
                 if (textFieldColor) {
@@ -191,7 +185,7 @@ export function login(arg: any): Promise<LoginResult> {
                     resolve({
                         result: r,
                         userName:
-                        userNameTextField.text,
+                            userNameTextField.text,
                         password: passwordTextField.text
                     });
                 });
@@ -204,9 +198,18 @@ export function login(arg: any): Promise<LoginResult> {
 }
 
 function showUIAlertController(alertController: UIAlertController) {
-    let currentPage = getCurrentPage();
-    if (currentPage) {
-        let viewController: UIViewController = currentPage.modal ? currentPage.modal.ios : currentPage.ios;
+    let currentView = getCurrentPage() || getRootView();
+
+    if (currentView) {
+        currentView = currentView.modal || currentView;
+
+        let viewController: UIViewController = currentView.ios;
+
+        if (!(currentView.ios instanceof UIViewController)) {
+            const parentWithController = iosView.getParentWithViewController(currentView);
+            viewController = parentWithController ? parentWithController.viewController : undefined;
+        }
+
         if (viewController) {
             if (alertController.popoverPresentationController) {
                 alertController.popoverPresentationController.sourceView = viewController.view;
@@ -236,7 +239,7 @@ function showUIAlertController(alertController: UIAlertController) {
     }
 }
 
-export function action(arg: any): Promise<string> {
+export function action(): Promise<string> {
     let options: ActionOptions;
 
     let defaultOptions = { title: null, cancelButtonText: CANCEL };

@@ -1,14 +1,12 @@
 ﻿// Definitions.
-import { iOSFrame as iOSFrameDefinition, BackstackEntry, NavigationTransition, NavigationEntry } from ".";
+import { iOSFrame as iOSFrameDefinition, BackstackEntry, NavigationTransition } from ".";
 import { Page } from "../page";
 import { profile } from "../../profiling";
 
 //Types.
-import { FrameBase, View, topmost, layout, traceEnabled, traceWrite, traceCategories, isCategorySet } from "./frame-common";
+import { FrameBase, View, layout, traceEnabled, traceWrite, traceCategories, isCategorySet } from "./frame-common";
 import { _createIOSAnimatedTransitioning } from "./fragment.transitions";
-// HACK: Webpack. Use a fully-qualified import to allow resolve.extensions(.ios.js) to
-// kick in. `../utils` doesn't seem to trigger the webpack extensions mechanism.
-import * as uiUtils from "../../ui/utils";
+
 import * as utils from "../../utils/utils";
 
 export * from "./frame-common";
@@ -32,7 +30,15 @@ export class Frame extends FrameBase {
         super();
         this._ios = new iOSFrame(this);
         this.viewController = this._ios.controller;
-        this.nativeViewProtected = this._ios.controller.view;
+    }
+
+    createNativeView() {
+        return this.viewController.view;
+    }
+
+    public disposeNativeView() {
+        this._removeFromFrameStack();
+        super.disposeNativeView();
     }
 
     public get ios(): iOSFrame {
@@ -202,7 +208,7 @@ export class Frame extends FrameBase {
     }
 
     public _getNavBarVisible(page: Page): boolean {
-        switch (this._ios.navBarVisibility) {
+        switch (this.actionBarVisibility) {
             case "always":
                 return true;
 
@@ -210,17 +216,26 @@ export class Frame extends FrameBase {
                 return false;
 
             case "auto":
-                let newValue: boolean;
-
-                if (page && page.actionBarHidden !== undefined) {
-                    newValue = !page.actionBarHidden;
+                switch (this._ios.navBarVisibility) {
+                    case "always":
+                        return true;
+        
+                    case "never":
+                        return false;
+        
+                    case "auto":
+                        let newValue: boolean;
+        
+                        if (page && page.actionBarHidden !== undefined) {
+                            newValue = !page.actionBarHidden;
+                        }
+                        else {
+                            newValue = this.ios.controller.viewControllers.count > 1 || (page && page.actionBar && !page.actionBar._isEmpty());
+                        }
+        
+                        newValue = !!newValue; // Make sure it is boolean
+                        return newValue;
                 }
-                else {
-                    newValue = this.ios.controller.viewControllers.count > 1 || (page && page.actionBar && !page.actionBar._isEmpty());
-                }
-
-                newValue = !!newValue; // Make sure it is boolean
-                return newValue;
         }
     }
 
@@ -569,14 +584,12 @@ class iOSFrame implements iOSFrameDefinition {
     private _controller: UINavigationControllerImpl;
     private _showNavigationBar: boolean;
     private _navBarVisibility: "auto" | "never" | "always" = "auto";
-    private _frame: Frame;
 
     // TabView uses this flag to disable animation while showing/hiding the navigation bar because of the "< More" bar.
     // See the TabView._handleTwoNavigationBars method for more details.
     public _disableNavBarAnimation: boolean;
 
     constructor(frame: Frame) {
-        this._frame = frame;
         this._controller = UINavigationControllerImpl.initWithOwner(new WeakRef(frame));
     }
 
@@ -589,14 +602,7 @@ class iOSFrame implements iOSFrameDefinition {
     }
     public set showNavigationBar(value: boolean) {
         this._showNavigationBar = value;
-
-        const viewController = this._controller.viewControllers;
-        const length = viewController ? viewController.count : 0;
-        const animated = length > 0 && !this._disableNavBarAnimation;
-
-        this._controller.setNavigationBarHiddenAnimated(!value, true);
-        // this._controller.view.setNeedsLayout();
-        // this._controller.view.layoutIfNeeded();
+        this._controller.setNavigationBarHiddenAnimated(!value, !this._disableNavBarAnimation);
     }
 
     public get navBarVisibility(): "auto" | "never" | "always" {

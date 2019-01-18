@@ -109,11 +109,11 @@ export module ad {
 
     export function dismissSoftInput(nativeView?: android.view.View): void {
         const inputManager = getInputMethodManager();
-        let windowToken: android.os.IIBinder;
+        let windowToken: android.os.IBinder;
 
         if (nativeView instanceof android.view.View) {
             windowToken = nativeView.getWindowToken()
-        } else if (androidApp.foregroundActivity instanceof android.app.Activity) {
+        } else if (androidApp.foregroundActivity instanceof android.support.v7.app.AppCompatActivity) {
             const decorView = androidApp.foregroundActivity.getWindow().getDecorView();
             windowToken = decorView ? decorView.getWindowToken() : null;
         }
@@ -128,7 +128,7 @@ export module ad {
             var hashSet = new java.util.HashSet<string>();
             if (str !== undefined) {
                 for (var element in str) {
-                    hashSet.add('' + str[element]);
+                    hashSet.add("" + str[element]);
                 }
             }
             return hashSet;
@@ -139,7 +139,7 @@ export module ad {
             if (stringSet !== undefined) {
                 var it = stringSet.iterator();
                 while (it.hasNext()) {
-                    var element = '' + it.next();
+                    var element = "" + it.next();
                     arr.push(element);
                 }
             }

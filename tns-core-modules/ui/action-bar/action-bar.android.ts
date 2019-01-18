@@ -1,5 +1,9 @@
 import { AndroidActionBarSettings as AndroidActionBarSettingsDefinition, AndroidActionItemSettings } from ".";
-import { ActionItemBase, ActionBarBase, isVisible, View, layout, colorProperty, flatProperty, Color } from "./action-bar-common";
+import {
+    ActionItemBase, ActionBarBase, isVisible,
+    View, layout, colorProperty, flatProperty,
+    Color, traceMissingIcon
+} from "./action-bar-common";
 import { RESOURCE_PREFIX } from "../../utils/utils";
 import { fromFileOrResource } from "../../image-source";
 import * as application from "../../application";
@@ -18,7 +22,7 @@ function generateItemId(): number {
 }
 
 interface MenuItemClickListener {
-    new (owner: ActionBar): android.support.v7.widget.Toolbar.OnMenuItemClickListener;
+    new(owner: ActionBar): android.support.v7.widget.Toolbar.OnMenuItemClickListener;
 }
 
 let appResources: android.content.res.Resources;
@@ -38,7 +42,7 @@ function initializeMenuItemClickListener(): void {
             return global.__native(this);
         }
 
-        onMenuItemClick(item: android.view.IMenuItem): boolean {
+        onMenuItemClick(item: android.view.MenuItem): boolean {
             let itemId = item.getItemId();
             return this.owner._onAndroidItemSelected(itemId);
         }
@@ -131,17 +135,16 @@ export class ActionBar extends ActionBarBase {
     }
 
     public createNativeView() {
-        initializeMenuItemClickListener();
-        const toolbar = new android.support.v7.widget.Toolbar(this._context);
-        const menuItemClickListener = new MenuItemClickListener(this);
-        toolbar.setOnMenuItemClickListener(menuItemClickListener);
-        (<any>toolbar).menuItemClickListener = menuItemClickListener;
-        return toolbar;
+        return new android.support.v7.widget.Toolbar(this._context);
     }
 
     public initNativeView(): void {
         super.initNativeView();
-        (<any>this.nativeViewProtected).menuItemClickListener.owner = this;
+        const nativeView = this.nativeViewProtected;
+        initializeMenuItemClickListener();
+        const menuItemClickListener = new MenuItemClickListener(this);
+        nativeView.setOnMenuItemClickListener(menuItemClickListener);
+        (<any>nativeView).menuItemClickListener = menuItemClickListener;
     }
 
     public disposeNativeView() {
@@ -220,8 +223,13 @@ export class ActionBar extends ActionBarBase {
             }
             else if (navButton.icon) {
                 let drawableOrId = getDrawableOrResourceId(navButton.icon, appResources);
-                this.nativeViewProtected.setNavigationIcon(drawableOrId);
+                if (drawableOrId) {
+                    this.nativeViewProtected.setNavigationIcon(drawableOrId);
+                }
             }
+
+            // Set navigation content descripion, used by screen readers for the vision-impaired users
+            this.nativeViewProtected.setNavigationContentDescription(navButton.text || null);
 
             let navBtn = new WeakRef(navButton);
             this.nativeViewProtected.setNavigationOnClickListener(new android.view.View.OnClickListener({
@@ -285,7 +293,7 @@ export class ActionBar extends ActionBarBase {
             let menuItem = menu.add(android.view.Menu.NONE, item._getItemId(), android.view.Menu.NONE, item.text + "");
 
             if (item.actionView && item.actionView.android) {
-                // With custom action view, the menuitem cannot be displayed in a popup menu. 
+                // With custom action view, the menuitem cannot be displayed in a popup menu.
                 item.android.position = "actionBar";
                 menuItem.setActionView(item.actionView.android);
                 ActionBar._setOnClickListener(item);
@@ -301,9 +309,6 @@ export class ActionBar extends ActionBarBase {
                 let drawableOrId = getDrawableOrResourceId(item.icon, appResources);
                 if (drawableOrId) {
                     menuItem.setIcon(drawableOrId);
-                }
-                else {
-                    throw new Error("Error loading icon from " + item.icon);
                 }
             }
 
@@ -376,7 +381,7 @@ export class ActionBar extends ActionBarBase {
             }
 
             // Fallback to hardcoded falue if we don't find TextView instance...
-            // using new TextView().getTextColors().getDefaultColor() returns different value: -1979711488 
+            // using new TextView().getTextColors().getDefaultColor() returns different value: -1979711488
             defaultTitleTextColor = tv ? tv.getTextColors().getDefaultColor() : -570425344;
         }
 
@@ -420,10 +425,11 @@ function getDrawableOrResourceId(icon: string, resources: android.content.res.Re
         return undefined;
     }
 
+    let result = undefined;
     if (icon.indexOf(RESOURCE_PREFIX) === 0) {
-        let resourceId: number = resources.getIdentifier(icon.substr(RESOURCE_PREFIX.length), 'drawable', application.android.packageName);
+        let resourceId: number = resources.getIdentifier(icon.substr(RESOURCE_PREFIX.length), "drawable", application.android.packageName);
         if (resourceId > 0) {
-            return resourceId;
+            result = resourceId;
         }
     }
     else {
@@ -434,10 +440,14 @@ function getDrawableOrResourceId(icon: string, resources: android.content.res.Re
             drawable = new android.graphics.drawable.BitmapDrawable(is.android);
         }
 
-        return drawable;
+        result = drawable;
     }
 
-    return undefined;
+    if (!result) {
+        traceMissingIcon(icon);
+    }
+
+    return result;
 }
 
 function getShowAsAction(menuItem: ActionItem): number {

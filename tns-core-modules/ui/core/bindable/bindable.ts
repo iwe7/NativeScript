@@ -6,7 +6,15 @@ import { Observable, WrappedValue, PropertyChangeData, EventData } from "../../.
 import { addWeakEventListener, removeWeakEventListener } from "../weak-event-listener";
 import { bindingConstants, parentsRegex } from "../../builder/binding-builder";
 import { escapeRegexSymbols } from "../../../utils/utils";
-import { isEnabled as traceEnabled, write as traceWrite, categories as traceCategories, notifyEvent as traceNotifyEvent, isCategorySet, messageType as traceMessageType } from "../../../trace";
+import {
+    isEnabled as traceEnabled,
+    write as traceWrite,
+    error as traceError,
+    categories as traceCategories,
+    notifyEvent as traceNotifyEvent,
+    isCategorySet,
+    messageType as traceMessageType
+} from "../../../trace";
 import * as types from "../../../utils/types";
 
 import * as applicationCommon from "../../../application/application-common";
@@ -14,7 +22,7 @@ import * as polymerExpressions from "../../../js-libs/polymer-expressions";
 
 export {
     Observable, WrappedValue, PropertyChangeData, EventData,
-    traceEnabled, traceWrite, traceCategories, traceNotifyEvent, traceMessageType, isCategorySet
+    traceEnabled, traceWrite, traceError, traceCategories, traceNotifyEvent, traceMessageType, isCategorySet
 };
 
 const contextKey = "context";
@@ -91,8 +99,6 @@ export class Binding {
     private sourceOptions: { instance: WeakRef<any>; property: string };
     private targetOptions: { instance: WeakRef<Object>; property: string };
 
-    private sourcesAndProperties: Array<{ instance: Object; property: string }>;
-
     private sourceProperties: Array<string>;
     private propertyChangeListeners: Map<string, Observable> = new Map<string, Observable>();
 
@@ -140,7 +146,6 @@ export class Binding {
         });
 
         this.propertyChangeListeners.clear();
-        this.sourcesAndProperties = null;
 
         if (this.source) {
             this.source.clear();
@@ -309,7 +314,7 @@ export class Binding {
         // update expression will be '$newPropertyValue + 2'
         // then on expression execution the new value will be taken and target property will be updated with the value of the expression.
         let escapedSourceProperty = escapeRegexSymbols(this.options.sourceProperty);
-        let expRegex = new RegExp(escapedSourceProperty, 'g');
+        let expRegex = new RegExp(escapedSourceProperty, "g");
         let resultExp = this.options.expression.replace(expRegex, bc.newPropertyValueKey);
         return resultExp;
     }
@@ -444,7 +449,7 @@ export class Binding {
                 const newProps = sourceProps.slice(changedPropertyIndex + 1);
                 // add new weak event listeners
                 const newObject = data.object[sourceProps[changedPropertyIndex]]
-                if (!types.isNullOrUndefined(newObject) && typeof newObject === 'object') {
+                if (!types.isNullOrUndefined(newObject) && typeof newObject === "object") {
                     this.addPropertyChangeListeners(new WeakRef(newObject), newProps, parentProps);
                 }
             }
